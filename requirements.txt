@@ -1,0 +1,46 @@
+# ==============================
+# AgriSentry - Core Dependencies
+# ==============================
+
+# Computer Vision
+ultralytics
+opencv-python
+pillow
+
+# Deep Learning
+torch
+torchvision
+
+# Machine Learning
+scikit-learn
+xgboost
+
+# Data Processing
+numpy
+pandas
+scipy
+
+# Visualization
+matplotlib
+seaborn
+
+# API / Model Serving
+fastapi
+uvicorn[standard]
+pydantic
+
+# HTTP / External APIs
+requests
+httpx
+
+# Environment Variables
+python-dotenv
+
+# Jupyter
+jupyter
+ipykernel
+
+# Utilities
+tqdm
+joblib
+pyyaml
