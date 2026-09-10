@@ -61,7 +61,7 @@ data/raw/*
 data/processed/*
 data/external/*
 
-ml/computer_vision/data/*
+ml/computer_vision/data/
 ml/forecasting/data/*
 
 # Keep folder structure
@@ -69,7 +69,6 @@ ml/forecasting/data/*
 !data/processed/.gitkeep
 !data/external/.gitkeep
 
-!ml/computer_vision/data/.gitkeep
 !ml/forecasting/data/.gitkeep
 
 # ==============================
@@ -123,3 +122,9 @@ dist/
 *.key
 secrets.json
 credentials.json
+# Computer Vision model artifacts
+ml/computer_vision/models/*
+
+# Ignore complete computer vision dataset
+ml/computer_vision/data/
+data/plantvillage/
