@@ -1,0 +1,97 @@
+{
+  "project": "AgriSentry",
+  "task": "Plant Disease Detection",
+  "generated_at": "2026-09-11T22:03:10",
+  "model_information": {
+    "model_path": "C:\\Users\\HP\\agrisentry-core\\runs\\plantvillage_yolov8n\\weights\\best.pt",
+    "model_exists": true,
+    "dataset_yaml": "C:\\Users\\HP\\agrisentry-core\\ml\\computer_vision\\data\\plantvillage\\data.yaml",
+    "dataset_exists": true,
+    "image_size": 256,
+    "evaluation_split": "test",
+    "evaluation_directory": "C:\\Users\\HP\\agrisentry-core\\runs\\test_evaluation"
+  },
+  "training_metrics": {
+    "available": true,
+    "rows": 15,
+    "columns": [
+      "epoch",
+      "time",
+      "train/box_loss",
+      "train/cls_loss",
+      "train/dfl_loss",
+      "metrics/precision(B)",
+      "metrics/recall(B)",
+      "metrics/mAP50(B)",
+      "metrics/mAP50-95(B)",
+      "val/box_loss",
+      "val/cls_loss",
+      "val/dfl_loss",
+      "lr/pg0",
+      "lr/pg1",
+      "lr/pg2",
+      "lr/pg3",
+      "lr/pg4",
+      "lr/pg5",
+      "lr/pg6",
+      "lr/pg7"
+    ],
+    "latest_epoch_metrics": {
+      "epoch": 15.0,
+      "time": 4499.47,
+      "train/box_loss": 0.33626,
+      "train/cls_loss": 0.43839,
+      "train/dfl_loss": 0.98644,
+      "metrics/precision(B)": 0.99059,
+      "metrics/recall(B)": 0.98545,
+      "metrics/mAP50(B)": 0.99313,
+      "metrics/mAP50-95(B)": 0.9826,
+      "val/box_loss": 0.20715,
+      "val/cls_loss": 0.20154,
+      "val/dfl_loss": 0.78497,
+      "lr/pg0": 0.021684,
+      "lr/pg1": 0.007228,
+      "lr/pg2": 0.021684,
+      "lr/pg3": 0.007228,
+      "lr/pg4": 0.021684,
+      "lr/pg5": 0.007228,
+      "lr/pg6": 0.021684,
+      "lr/pg7": 0.007228
+    },
+    "best_training_map50_95": 0.9827,
+    "source": "C:\\Users\\HP\\agrisentry-core\\runs\\plantvillage_yolov8n\\results.csv"
+  },
+  "evaluation_artifacts": {
+    "available": true,
+    "directory": "C:\\Users\\HP\\agrisentry-core\\runs\\test_evaluation",
+    "files": [
+      "runs\\test_evaluation\\BoxF1_curve.png",
+      "runs\\test_evaluation\\BoxPR_curve.png",
+      "runs\\test_evaluation\\BoxP_curve.png",
+      "runs\\test_evaluation\\BoxR_curve.png",
+      "runs\\test_evaluation\\confusion_matrix.png",
+      "runs\\test_evaluation\\confusion_matrix_normalized.png",
+      "runs\\test_evaluation\\val_batch0_labels.jpg",
+      "runs\\test_evaluation\\val_batch0_pred.jpg",
+      "runs\\test_evaluation\\val_batch1_labels.jpg",
+      "runs\\test_evaluation\\val_batch1_pred.jpg",
+      "runs\\test_evaluation\\val_batch2_labels.jpg",
+      "runs\\test_evaluation\\val_batch2_pred.jpg"
+    ]
+  },
+  "known_evaluation_metrics": {
+    "precision": 0.9865,
+    "recall": 0.9888,
+    "map50": 0.9937,
+    "map50_95": 0.9831,
+    "note": "These metrics were obtained during the completed test-set evaluation run."
+  },
+  "reliability_tests": {
+    "available": true,
+    "total_tests": 7,
+    "passed_tests": 7,
+    "failed_tests": 0,
+    "success_rate": 100.0,
+    "summary_file": "C:\\Users\\HP\\agrisentry-core\\runs\\reliability_tests\\test_summary.json"
+  }
+}
