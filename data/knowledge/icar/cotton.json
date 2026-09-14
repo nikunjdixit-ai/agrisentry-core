@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Cotton Whitefly Advisory",
+    "content": "Monitor whitefly population regularly. Install yellow sticky traps. Use only CIBRC-approved insecticides when ETL is reached.",
+    "crop_type": "cotton",
+    "region": "Punjab",
+    "problem_category": "pest",
+    "compliance_safety_level": "cibrc_registered"
+  },
+  {
+    "title": "Cotton Leaf Curl Virus",
+    "content": "Use virus-free seed, remove infected plants and control whitefly vector.",
+    "crop_type": "cotton",
+    "region": "Punjab",
+    "problem_category": "viral_disease",
+    "compliance_safety_level": "standard"
+  }
+]
