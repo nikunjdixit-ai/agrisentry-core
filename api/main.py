@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from api.agents.graph import AgriSentryState, app as graph_app
+from api.routes.diagnosis import router as diagnosis_router
 
 
 app = FastAPI(
@@ -15,6 +16,14 @@ app = FastAPI(
         "with crop disease diagnosis and agricultural insights."
     ),
 )
+
+
+# --------------------------------------------------
+# Routers
+# --------------------------------------------------
+
+app.include_router(diagnosis_router)
+app.include_router(diagnosis_router, prefix="/api/v1")
 
 
 # --------------------------------------------------

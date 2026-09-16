@@ -60,14 +60,23 @@ def diagnostician_agent(state: AgriSentryState):
         doc.model_dump() for doc in docs
     ]
 
-    state["diagnostic_result"] = {
-        "status": "pending_model_diagnosis",
-        "weather": weather,
-        "message": (
-            "YOLO diagnosis will be connected "
-            "through the diagnosis API."
-        ),
-    }
+    existing_diagnosis = state.get("diagnostic_result")
+    if existing_diagnosis and isinstance(existing_diagnosis, dict) and existing_diagnosis.get("status") == "success":
+        state["diagnostic_result"] = {
+            **existing_diagnosis,
+            "weather": weather,
+            "treatment_advisories": [doc.title for doc in docs],
+            "primary_advisory": docs[0].content if docs else "Consult local agricultural extension officer.",
+        }
+    else:
+        state["diagnostic_result"] = {
+            "status": "advisory_generated",
+            "crop": crop,
+            "region": region,
+            "weather": weather,
+            "suspected_issue": docs[0].title if docs else "General Advisory",
+            "actionable_advice": docs[0].content if docs else "Consult local agricultural extension officer.",
+        }
 
     state["current_step"] = "diagnosis_complete"
 
