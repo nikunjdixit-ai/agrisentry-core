@@ -5,8 +5,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 
-# Virtual Environment
+# Virtual Environments
 .venv/
 venv/
 env/
@@ -52,6 +54,10 @@ desktop.ini
 *.keras
 *.pkl
 *.joblib
+*.safetensors
+
+# Computer Vision Model Artifacts
+ml/computer_vision/models/
 
 # ==============================
 # Datasets
@@ -62,13 +68,15 @@ data/processed/*
 data/external/*
 
 ml/computer_vision/data/
-ml/forecasting/data/*
+ml/forecasting/data/
+
+data/plantvillage/
+plantvillage/
 
 # Keep folder structure
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/external/.gitkeep
-
 !ml/forecasting/data/.gitkeep
 
 # ==============================
@@ -79,10 +87,20 @@ runs/
 runs/detect/
 runs/classify/
 runs/train/
+runs/plantvillage_yolov8n/
 
 outputs/
 artifacts/
 checkpoints/
+
+# ==============================
+# ChromaDB / Vector Database
+# ==============================
+
+chroma_data/
+chromadb/
+.chroma/
+chroma.sqlite3
 
 # ==============================
 # Logs
@@ -97,6 +115,9 @@ logs/
 
 *.tmp
 *.temp
+*.bak
+*.swp
+*.swo
 
 # ==============================
 # Coverage / Testing
@@ -104,7 +125,10 @@ logs/
 
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+.tox/
+.nox/
 
 # ==============================
 # Build
@@ -120,11 +144,15 @@ dist/
 
 *.pem
 *.key
+*.crt
+*.p12
 secrets.json
 credentials.json
-# Computer Vision model artifacts
-ml/computer_vision/models/*
+service-account.json
 
-# Ignore complete computer vision dataset
-ml/computer_vision/data/
-data/plantvillage/
+# ==============================
+# Local Configuration
+# ==============================
+
+*.local
+config.local.*
