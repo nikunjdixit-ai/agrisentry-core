@@ -10,10 +10,6 @@ from api.tools.agri_tools import (
 )
 
 
-# ----------------------------------
-# Global State
-# ----------------------------------
-
 class AgriSentryState(TypedDict):
 
     user_query: str
@@ -42,10 +38,6 @@ class AgriSentryState(TypedDict):
 rag = AgroRAG()
 
 
-# ----------------------------------
-# Diagnostician Agent
-# ----------------------------------
-
 def diagnostician_agent(state: AgriSentryState):
 
     crop = state["crop_details"]["crop"]
@@ -64,22 +56,25 @@ def diagnostician_agent(state: AgriSentryState):
         }
     )
 
-    state["rag_context"] = [doc.model_dump() for doc in docs]
+    state["rag_context"] = [
+        doc.model_dump() for doc in docs
+    ]
 
-    state["diagnostic_result"] = weather
+    state["diagnostic_result"] = {
+        "status": "pending_model_diagnosis",
+        "weather": weather,
+        "message": (
+            "YOLO diagnosis will be connected "
+            "through the diagnosis API."
+        ),
+    }
 
     state["current_step"] = "diagnosis_complete"
 
     return state
 
 
-# ----------------------------------
-# Procurement Agent
-# ----------------------------------
-
 def procurement_agent(state: AgriSentryState):
-
-    crop = state["crop_details"]["crop"]
 
     vendors = search_vendor_catalog.invoke(
         {
@@ -94,10 +89,6 @@ def procurement_agent(state: AgriSentryState):
 
     return state
 
-
-# ----------------------------------
-# Market Agent
-# ----------------------------------
 
 def market_agent(state: AgriSentryState):
 
@@ -114,10 +105,6 @@ def market_agent(state: AgriSentryState):
 
     return state
 
-
-# ----------------------------------
-# Verification
-# ----------------------------------
 
 def verification_gate(state: AgriSentryState):
 
@@ -140,10 +127,6 @@ def verification_gate(state: AgriSentryState):
     return state
 
 
-# ----------------------------------
-# Router
-# ----------------------------------
-
 def route_verification(state: AgriSentryState):
 
     if state["verification_flag"]:
@@ -160,18 +143,30 @@ def route_verification(state: AgriSentryState):
 
 
 # ----------------------------------
-# Graph
+# Graph Construction
 # ----------------------------------
 
 workflow = StateGraph(AgriSentryState)
 
-workflow.add_node("DiagnosticianAgent", diagnostician_agent)
+workflow.add_node(
+    "DiagnosticianAgent",
+    diagnostician_agent,
+)
 
-workflow.add_node("ProcurementAgent", procurement_agent)
+workflow.add_node(
+    "ProcurementAgent",
+    procurement_agent,
+)
 
-workflow.add_node("MarketAgent", market_agent)
+workflow.add_node(
+    "MarketAgent",
+    market_agent,
+)
 
-workflow.add_node("VerificationGate", verification_gate)
+workflow.add_node(
+    "VerificationGate",
+    verification_gate,
+)
 
 workflow.set_entry_point("DiagnosticianAgent")
 
