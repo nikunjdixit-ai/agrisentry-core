@@ -156,3 +156,8 @@ service-account.json
 
 *.local
 config.local.*
+
+# ==============================
+# Generated Voice Outputs
+# ==============================
+voice_outputs/

@@ -369,6 +369,8 @@ def verification_gate(state: AgriSentryState):
 
         state["evidence_score"] = 0.40
 
+        state["retry_count"] = state.get("retry_count", 0) + 1
+
     return state
 
 
@@ -380,15 +382,14 @@ def route_verification(
     state: AgriSentryState,
 ):
 
-    if state["verification_flag"]:
+    if state.get("verification_flag"):
         return "verified"
 
-    if state["retry_count"] >= 1:
+    if state.get("retry_count", 0) >= 1:
         return "escalate"
 
-    state["retry_count"] += 1
-
     return "retry"
+
 
 
 # ============================================================

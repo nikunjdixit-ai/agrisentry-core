@@ -44,3 +44,9 @@ ipykernel
 tqdm
 joblib
 pyyaml
+
+# Member 3: Telemetry & Vernacular Voice / Telephony
+twilio>=8.0.0
+edge-tts>=6.1.0
+openai-whisper
+python-multipart>=0.0.9

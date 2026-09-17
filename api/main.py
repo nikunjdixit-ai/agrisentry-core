@@ -1,13 +1,16 @@
+from pathlib import Path
 from typing import Any, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from api.agents.graph import AgriSentryState, app as graph_app
 from api.routes.telemetry import router as telemetry_router
 from api.routes.voice import router as voice_router
 from api.routes.diagnosis import router as diagnosis_router
+from modules.telemetry_voice.config import VOICE_OUTPUT_DIRECTORY
 
 
 # ----------------------------------
@@ -31,6 +34,15 @@ app.include_router(diagnosis_router)
 
 
 # ----------------------------------
+# Static Files (Voice Outputs)
+# ----------------------------------
+
+voice_dir = Path(VOICE_OUTPUT_DIRECTORY)
+voice_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/voice_outputs", StaticFiles(directory=str(voice_dir)), name="voice_outputs")
+
+
+# ----------------------------------
 # CORS
 # ----------------------------------
 
@@ -41,6 +53,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ----------------------------------

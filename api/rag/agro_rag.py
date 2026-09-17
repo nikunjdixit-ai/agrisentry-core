@@ -263,7 +263,7 @@ class AgroRAG:
         query: str,
         crop: str,
         region: str,
-        similarity_threshold: float = 0.45,
+        similarity_threshold: float = 0.40,
     ) -> List[AgriDocument]:
 
         crop = self._normalize_text(crop)
@@ -288,12 +288,17 @@ class AgroRAG:
             f"Agricultural advisory: {query}"
         )
 
-        print(
-            "\n[RAG] Retrieval query:"
-        )
-        print(
-            retrieval_query
-        )
+        try:
+            print(
+                "\n[RAG] Retrieval query:"
+            )
+            print(
+                retrieval_query
+            )
+        except UnicodeEncodeError:
+            print(
+                retrieval_query.encode("ascii", "backslashreplace").decode("ascii")
+            )
 
         try:
 

@@ -10,6 +10,8 @@ Contains:
 - Supported languages and TTS voices
 """
 
+import os
+
 
 
 DEFAULT_LATITUDE = 26.8467
@@ -120,3 +122,24 @@ ENABLE_MQTT = True
 ENABLE_WHISPER = True
 
 ENABLE_EDGE_TTS = True
+
+
+# ------------------------------------------------------------
+# Twilio Telephony / Voice IVR Configuration
+# ------------------------------------------------------------
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
+TWILIO_VOICE_WEBHOOK_URL = os.getenv("TWILIO_VOICE_WEBHOOK_URL", "")
+
+# Base URL for public callbacks and serving audio files to Twilio.
+# If unset or local, the IVR falls back to native Hindi <Say> speech.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+
+# Default crop and region for vernacular voice calls when unspecified
+DEFAULT_VOICE_CROP = os.getenv("DEFAULT_VOICE_CROP", "cotton")
+DEFAULT_VOICE_REGION = os.getenv("DEFAULT_VOICE_REGION", "Punjab")
+
+# Twilio Voice Actor & Language
+TWILIO_VOICE_LANGUAGE = "hi-IN"
+TWILIO_VOICE_ACTOR = "Polly.Aditi"
