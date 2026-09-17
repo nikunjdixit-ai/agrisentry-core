@@ -4,7 +4,7 @@
 
 # Computer Vision
 ultralytics
-opencv-python
+opencv-python-headless
 pillow
 
 # Deep Learning
@@ -28,6 +28,12 @@ seaborn
 fastapi
 uvicorn[standard]
 pydantic
+python-multipart>=0.0.9
+
+# Agent Orchestration & RAG
+langgraph
+langchain-core
+chromadb
 
 # HTTP / External APIs
 requests
@@ -36,20 +42,12 @@ httpx
 # Environment Variables
 python-dotenv
 
-# Jupyter
-jupyter
-ipykernel
-
 # Utilities
 tqdm
 joblib
 pyyaml
 
-# Member 3: Telemetry & Vernacular Voice / Telephony
+# Telemetry & Vernacular Voice / Telephony
 twilio>=8.0.0
 edge-tts>=6.1.0
 openai-whisper
-python-multipart>=0.0.9
-langgraph
-
-langgraph
