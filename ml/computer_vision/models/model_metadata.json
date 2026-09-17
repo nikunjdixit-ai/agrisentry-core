@@ -1,0 +1,104 @@
+{
+  "model_name": "agrisentry_disease_model",
+  "model_version": "1.0.0",
+  "architecture": "YOLOv8n-detect",
+  "number_of_classes": 38,
+  "class_names": [
+    "Apple___Apple_scab",
+    "Apple___Black_rot",
+    "Apple___Cedar_apple_rust",
+    "Apple___healthy",
+    "Blueberry___healthy",
+    "Cherry___Powdery_mildew",
+    "Cherry___healthy",
+    "Corn___Cercospora_leaf_spot Gray_leaf_spot",
+    "Corn___Common_rust",
+    "Corn___Northern_Leaf_Blight",
+    "Corn___healthy",
+    "Grape___Black_rot",
+    "Grape___Esca_(Black_Measles)",
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)",
+    "Grape___healthy",
+    "Orange___Haunglongbing_(Citrus_greening)",
+    "Peach___Bacterial_spot",
+    "Peach___healthy",
+    "Pepper,_bell___Bacterial_spot",
+    "Pepper,_bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Raspberry___healthy",
+    "Soybean___healthy",
+    "Squash___Powdery_mildew",
+    "Strawberry___Leaf_scorch",
+    "Strawberry___healthy",
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites Two-spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___healthy"
+  ],
+  "input_image_size": [
+    256,
+    256
+  ],
+  "dataset_name": "PlantVillage",
+  "dataset_splits": {
+    "original_split": {
+      "train_samples": 43434,
+      "val_samples": 5429,
+      "test_samples": 5430,
+      "total_samples": 54293,
+      "duplicate_leakage_groups": 11,
+      "duplicate_leakage_images": 22
+    },
+    "clean_grouped_split": {
+      "train_samples": 43433,
+      "val_samples": 5429,
+      "test_samples": 5431,
+      "total_samples": 54293,
+      "duplicate_leakage_groups": 0,
+      "duplicate_leakage_images": 0,
+      "config_path": "ml/computer_vision/data/plantvillage/clean_split/data_clean.yaml"
+    }
+  },
+  "training_epochs_recorded": 15,
+  "best_epoch": 13,
+  "validation_metrics": {
+    "precision": 0.99059,
+    "recall": 0.98545,
+    "map50": 0.99313,
+    "map50_95": 0.9826,
+    "box_loss": 0.20715,
+    "cls_loss": 0.20154,
+    "dfl_loss": 0.78497
+  },
+  "test_metrics": {
+    "precision": 0.9865,
+    "recall": 0.9888,
+    "map50": 0.9937,
+    "map50_95": 0.9831,
+    "source": "runs/test_evaluation/evaluation_report.json"
+  },
+  "default_hyperparameters": {
+    "confidence_threshold": 0.25,
+    "high_confidence_threshold": 0.7,
+    "medium_confidence_threshold": 0.4,
+    "iou_threshold": 0.45,
+    "device": "cpu"
+  },
+  "trained_on_split": "original_split",
+  "checkpoint_source": "runs/plantvillage_yolov8n/weights/best.pt",
+  "date_generated": "2026-09-16T13:15:00",
+  "known_limitations": [
+    "Single-leaf laboratory setting bias (average bounding box covers 82.2% of image).",
+    "Performance gap on in-field / smartphone photos with complex backgrounds and varied natural illumination.",
+    "High class imbalance in source dataset (Class 22 has 122 images vs Class 15 with 4404 images)."
+  ],
+  "domain_gap_analysis": "Zero-shot evaluation on PlantDoc demonstrates significant domain shift due to cluttered backgrounds, multiple overlapping leaves, and direct sunlight/shadows. For real-world field deployment, fine-tuning with in-field data augmentation or natural background replacement is recommended."
+}

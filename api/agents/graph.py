@@ -10,65 +10,35 @@ from api.tools.agri_tools import (
 )
 
 
-# ==================================================
-# AgriSentry State
-# ==================================================
-
 class AgriSentryState(TypedDict):
-
     user_query: str
-
     crop_details: Dict[str, Any]
-
     diagnostic_result: Optional[Dict[str, Any]]
-
     rag_context: List[Dict[str, Any]]
-
     vendor_options: List[Dict[str, Any]]
-
     mandi_prices: Dict[str, Any]
-
     current_step: str
-
     verification_flag: bool
-
     retry_count: int
-
     verification_notes: str
-
     evidence_score: float
 
-
-# ==================================================
-# AgroRAG
-# ==================================================
 
 rag = AgroRAG()
 
 
-# ==================================================
-# Diagnostician Agent
-# ==================================================
-
 def diagnostician_agent(state: AgriSentryState):
-
     crop = state["crop_details"]["crop"]
     region = state["crop_details"]["region"]
 
-    # ----------------------------------------------
     # Retrieve agricultural knowledge
-    # ----------------------------------------------
-
     docs = rag.retrieve_agri_context(
         query=state["user_query"],
         crop=crop,
         region=region,
     )
 
-    # ----------------------------------------------
     # Get weather information
-    # ----------------------------------------------
-
     weather = get_weather_forecast.invoke(
         {
             "location": region,
@@ -76,199 +46,118 @@ def diagnostician_agent(state: AgriSentryState):
         }
     )
 
-    # ----------------------------------------------
     # Store RAG context
-    # ----------------------------------------------
-
     state["rag_context"] = [
         doc.model_dump()
         for doc in docs
     ]
 
-    # ----------------------------------------------
-    # IMPORTANT:
-    # Preserve existing YOLO diagnosis.
-    #
-    # When /diagnosis receives an image,
-    # diagnosis.py already puts the YOLO result
-    # inside state["diagnostic_result"].
-    #
-    # We must NOT overwrite it.
-    # ----------------------------------------------
+    # Preserve existing YOLO diagnosis and enrich it
+    # with weather and RAG-based agricultural advice.
+    existing_diagnosis = state.get("diagnostic_result")
 
-    existing_diagnosis = state.get(
-        "diagnostic_result"
-    )
-
-    if existing_diagnosis is None:
-
-        # No image / YOLO diagnosis available.
+    if (
+        existing_diagnosis
+        and isinstance(existing_diagnosis, dict)
+        and existing_diagnosis.get("status") == "success"
+    ):
         state["diagnostic_result"] = {
-
-            "status": "pending_model_diagnosis",
-
+            **existing_diagnosis,
             "weather": weather,
-
-            "message": (
-                "No image-based diagnosis "
-                "was provided."
+            "treatment_advisories": [
+                doc.title
+                for doc in docs
+            ],
+            "primary_advisory": (
+                docs[0].content
+                if docs
+                else "Consult local agricultural extension officer."
             ),
         }
 
     else:
-
-        # Preserve YOLO result and add weather.
         state["diagnostic_result"] = {
-
-            **existing_diagnosis,
-
+            "status": "advisory_generated",
+            "crop": crop,
+            "region": region,
             "weather": weather,
+            "suspected_issue": (
+                docs[0].title
+                if docs
+                else "General Advisory"
+            ),
+            "actionable_advice": (
+                docs[0].content
+                if docs
+                else "Consult local agricultural extension officer."
+            ),
         }
 
-    # ----------------------------------------------
-    # Update workflow status
-    # ----------------------------------------------
-
-    state["current_step"] = (
-        "diagnosis_complete"
-    )
+    state["current_step"] = "diagnosis_complete"
 
     return state
 
 
-# ==================================================
-# Procurement Agent
-# ==================================================
-
 def procurement_agent(state: AgriSentryState):
+    crop = state["crop_details"]["crop"]
 
     vendors = search_vendor_catalog.invoke(
         {
             "item_type": "pesticide",
-
-            "region": state[
-                "crop_details"
-            ]["region"],
+            "region": state["crop_details"]["region"],
         }
     )
 
     state["vendor_options"] = vendors
-
-    state["current_step"] = (
-        "vendor_complete"
-    )
+    state["current_step"] = "vendor_complete"
 
     return state
 
 
-# ==================================================
-# Market Agent
-# ==================================================
-
 def market_agent(state: AgriSentryState):
-
     prices = fetch_mandi_prices.invoke(
         {
-            "crop": state[
-                "crop_details"
-            ]["crop"],
-
-            "state": state[
-                "crop_details"
-            ]["region"],
+            "crop": state["crop_details"]["crop"],
+            "state": state["crop_details"]["region"],
         }
     )
 
     state["mandi_prices"] = prices
-
-    state["current_step"] = (
-        "market_complete"
-    )
+    state["current_step"] = "market_complete"
 
     return state
 
 
-# ==================================================
-# Verification Gate
-# ==================================================
-
-def verification_gate(
-    state: AgriSentryState
-):
-
-    # ----------------------------------------------
-    # If RAG evidence is available,
-    # mark result as verified.
-    # ----------------------------------------------
-
+def verification_gate(state: AgriSentryState):
     if len(state["rag_context"]) > 0:
-
         state["verification_flag"] = True
-
-        state["verification_notes"] = (
-            "Evidence Verified"
-        )
-
+        state["verification_notes"] = "Evidence Verified"
         state["evidence_score"] = 0.95
-
     else:
-
         state["verification_flag"] = False
-
-        state["verification_notes"] = (
-            "Retry Required"
-        )
-
+        state["verification_notes"] = "Retry Required"
         state["evidence_score"] = 0.40
 
     return state
 
 
-# ==================================================
-# Verification Router
-# ==================================================
-
-def route_verification(
-    state: AgriSentryState
-):
-
-    # ----------------------------------------------
-    # Verified
-    # ----------------------------------------------
-
+def route_verification(state: AgriSentryState):
     if state["verification_flag"]:
-
         return "verified"
 
-    # ----------------------------------------------
-    # Maximum retry reached
-    # ----------------------------------------------
-
     if state["retry_count"] >= 1:
-
         return "escalate"
-
-    # ----------------------------------------------
-    # Retry diagnosis
-    # ----------------------------------------------
 
     state["retry_count"] += 1
 
     return "retry"
 
 
-# ==================================================
+# ----------------------------------
 # Graph Construction
-# ==================================================
+# ----------------------------------
 
-workflow = StateGraph(
-    AgriSentryState
-)
-
-
-# ==================================================
-# Add Nodes
-# ==================================================
+workflow = StateGraph(AgriSentryState)
 
 workflow.add_node(
     "DiagnosticianAgent",
@@ -290,20 +179,12 @@ workflow.add_node(
     verification_gate,
 )
 
-
-# ==================================================
-# Entry Point
-# ==================================================
-
+# Entry point
 workflow.set_entry_point(
     "DiagnosticianAgent"
 )
 
-
-# ==================================================
-# Main Workflow
-# ==================================================
-
+# Main workflow
 workflow.add_edge(
     "DiagnosticianAgent",
     "ProcurementAgent",
@@ -319,29 +200,16 @@ workflow.add_edge(
     "VerificationGate",
 )
 
-
-# ==================================================
-# Verification Routing
-# ==================================================
-
+# Verification routing
 workflow.add_conditional_edges(
-
     "VerificationGate",
-
     route_verification,
-
     {
         "verified": END,
-
         "retry": "DiagnosticianAgent",
-
         "escalate": END,
     },
 )
 
-
-# ==================================================
-# Compile Graph
-# ==================================================
-
+# Compile graph
 app = workflow.compile()

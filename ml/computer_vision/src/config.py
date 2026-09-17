@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 
 # Project root:
@@ -28,14 +28,28 @@ LAST_MODEL_PATH = (
     / "last.pt"
 )
 
+# Canonical production model and metadata
+CANONICAL_MODEL_PATH = (
+    CV_ROOT
+    / "models"
+    / "agrisentry_disease_model.pt"
+)
+
+MODEL_METADATA_PATH = (
+    CV_ROOT
+    / "models"
+    / "model_metadata.json"
+)
+
 # Dataset configuration
 DATASET_YAML = DATASET_ROOT / "data.yaml"
+CLEAN_DATASET_YAML = DATASET_ROOT / "clean_split" / "data_clean.yaml"
 
-# Default inference settings
+# Default inference settings - strictly CPU only
 IMAGE_SIZE = 256
 CONFIDENCE_THRESHOLD = 0.25
 IOU_THRESHOLD = 0.45
-DEVICE = 0
+DEVICE = "cpu"
 
 # Sample images
 SAMPLE_IMAGE_1 = CV_ROOT / "test_leaf.jpg"

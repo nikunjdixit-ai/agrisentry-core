@@ -27,6 +27,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 MODEL_CANDIDATES = [
     PROJECT_ROOT
+    / "ml"
+    / "computer_vision"
+    / "models"
+    / "agrisentry_disease_model.pt",
+
+    PROJECT_ROOT
     / "runs"
     / "plantvillage_yolov8n"
     / "weights"
@@ -171,164 +177,13 @@ def estimate_severity(
 def run_yolo_inference(
     image: Image.Image,
 ) -> Dict[str, Any]:
+    """
+    Run plant disease inference using the canonical DiseaseDetector on CPU.
+    """
+    from ml.computer_vision.src.disease_detector import get_disease_detector
 
-    model = get_model()
-
-    raw_results = model.predict(
-        source=image,
-        imgsz=256,
-        conf=0.25,
-        verbose=False,
-    )
-
-    # Convert result iterator/list into a normal list.
-    results: List[Any] = list(
-        cast(Any, raw_results)
-    )
-
-    if not results:
-
-        return {
-            "disease": "Unknown",
-            "confidence": 0.0,
-            "detections": [],
-            "severity": {
-                "level": "unknown",
-                "affected_area_percent": 0.0,
-                "method": "No prediction result",
-            },
-        }
-
-    result: Any = results[0]
-
-    names: Any = getattr(
-        result,
-        "names",
-        {},
-    )
-
-    detections: List[Dict[str, Any]] = []
-
-    boxes: Any = getattr(
-        result,
-        "boxes",
-        None,
-    )
-
-    if boxes is not None:
-
-        class_values: Any = getattr(
-            boxes,
-            "cls",
-            None,
-        )
-
-        confidence_values: Any = getattr(
-            boxes,
-            "conf",
-            None,
-        )
-
-        coordinate_values: Any = getattr(
-            boxes,
-            "xyxy",
-            None,
-        )
-
-        if (
-            class_values is not None
-            and confidence_values is not None
-            and coordinate_values is not None
-        ):
-
-            number_of_boxes = len(
-                class_values
-            )
-
-            for index in range(number_of_boxes):
-
-                class_id = int(
-                    class_values[index].item()
-                )
-
-                confidence = float(
-                    confidence_values[index].item()
-                )
-
-                coordinates = (
-                    coordinate_values[index]
-                    .cpu()
-                    .tolist()
-                )
-
-                if len(coordinates) != 4:
-                    continue
-
-                x1, y1, x2, y2 = coordinates
-
-                if isinstance(names, dict):
-
-                    class_name = names.get(
-                        class_id,
-                        f"class_{class_id}",
-                    )
-
-                else:
-
-                    class_name = names[class_id]
-
-                detections.append(
-                    {
-                        "class_id": class_id,
-                        "class_name": str(
-                            class_name
-                        ),
-                        "confidence": round(
-                            confidence,
-                            4,
-                        ),
-                        "bbox": [
-                            round(float(x1), 2),
-                            round(float(y1), 2),
-                            round(float(x2), 2),
-                            round(float(y2), 2),
-                        ],
-                    }
-                )
-
-    detections.sort(
-        key=lambda item: item["confidence"],
-        reverse=True,
-    )
-
-    if detections:
-
-        top_detection = detections[0]
-
-        disease = top_detection["class_name"]
-        confidence = top_detection["confidence"]
-
-    else:
-
-        disease = "Unknown or no disease detected"
-        confidence = 0.0
-
-    severity = estimate_severity(
-        detections=detections,
-        image_width=image.width,
-        image_height=image.height,
-    )
-
-    return {
-        "disease": disease,
-        "confidence": confidence,
-        "detections": detections,
-        "severity": severity,
-        "image_size": {
-            "width": image.width,
-            "height": image.height,
-        },
-    }
+    detector = get_disease_detector()
+    return detector.detect(image)
 
 
 # ----------------------------------
@@ -412,12 +267,16 @@ async def diagnose_crop(
     normalized_crop = crop.strip().lower()
     normalized_region = region.strip().lower()
 
+    detected_crop = model_result.get("crop")
+    if (normalized_crop in ("", "unknown") or not normalized_crop) and detected_crop and detected_crop != "unknown":
+        normalized_crop = detected_crop
+
     workflow_query = query.strip()
 
     if not workflow_query:
-
+        disease_name = model_result.get("disease_display_name") or model_result.get("disease") or "disease"
         workflow_query = (
-            f"{normalized_crop} disease treatment "
+            f"{normalized_crop} {disease_name} treatment "
             f"and management in {normalized_region}"
         )
 
