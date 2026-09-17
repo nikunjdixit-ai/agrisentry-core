@@ -10,53 +10,35 @@ from api.tools.agri_tools import (
 )
 
 
-# ----------------------------------
-# Global State
-# ----------------------------------
-
 class AgriSentryState(TypedDict):
-
     user_query: str
-
     crop_details: Dict[str, Any]
-
     diagnostic_result: Optional[Dict[str, Any]]
-
     rag_context: List[Dict[str, Any]]
-
     vendor_options: List[Dict[str, Any]]
-
     mandi_prices: Dict[str, Any]
-
     current_step: str
-
     verification_flag: bool
-
     retry_count: int
-
     verification_notes: str
-
     evidence_score: float
 
 
 rag = AgroRAG()
 
 
-# ----------------------------------
-# Diagnostician Agent
-# ----------------------------------
-
 def diagnostician_agent(state: AgriSentryState):
-
     crop = state["crop_details"]["crop"]
     region = state["crop_details"]["region"]
 
+    # Retrieve agricultural knowledge
     docs = rag.retrieve_agri_context(
         query=state["user_query"],
         crop=crop,
         region=region,
     )
 
+    # Get weather information
     weather = get_weather_forecast.invoke(
         {
             "location": region,
@@ -64,21 +46,59 @@ def diagnostician_agent(state: AgriSentryState):
         }
     )
 
-    state["rag_context"] = [doc.model_dump() for doc in docs]
+    # Store RAG context
+    state["rag_context"] = [
+        doc.model_dump()
+        for doc in docs
+    ]
 
-    state["diagnostic_result"] = weather
+    # Preserve existing YOLO diagnosis and enrich it
+    # with weather and RAG-based agricultural advice.
+    existing_diagnosis = state.get("diagnostic_result")
+
+    if (
+        existing_diagnosis
+        and isinstance(existing_diagnosis, dict)
+        and existing_diagnosis.get("status") == "success"
+    ):
+        state["diagnostic_result"] = {
+            **existing_diagnosis,
+            "weather": weather,
+            "treatment_advisories": [
+                doc.title
+                for doc in docs
+            ],
+            "primary_advisory": (
+                docs[0].content
+                if docs
+                else "Consult local agricultural extension officer."
+            ),
+        }
+
+    else:
+        state["diagnostic_result"] = {
+            "status": "advisory_generated",
+            "crop": crop,
+            "region": region,
+            "weather": weather,
+            "suspected_issue": (
+                docs[0].title
+                if docs
+                else "General Advisory"
+            ),
+            "actionable_advice": (
+                docs[0].content
+                if docs
+                else "Consult local agricultural extension officer."
+            ),
+        }
 
     state["current_step"] = "diagnosis_complete"
 
     return state
 
 
-# ----------------------------------
-# Procurement Agent
-# ----------------------------------
-
 def procurement_agent(state: AgriSentryState):
-
     crop = state["crop_details"]["crop"]
 
     vendors = search_vendor_catalog.invoke(
@@ -89,18 +109,12 @@ def procurement_agent(state: AgriSentryState):
     )
 
     state["vendor_options"] = vendors
-
     state["current_step"] = "vendor_complete"
 
     return state
 
 
-# ----------------------------------
-# Market Agent
-# ----------------------------------
-
 def market_agent(state: AgriSentryState):
-
     prices = fetch_mandi_prices.invoke(
         {
             "crop": state["crop_details"]["crop"],
@@ -109,49 +123,29 @@ def market_agent(state: AgriSentryState):
     )
 
     state["mandi_prices"] = prices
-
     state["current_step"] = "market_complete"
 
     return state
 
 
-# ----------------------------------
-# Verification
-# ----------------------------------
-
 def verification_gate(state: AgriSentryState):
-
     if len(state["rag_context"]) > 0:
-
         state["verification_flag"] = True
-
         state["verification_notes"] = "Evidence Verified"
-
         state["evidence_score"] = 0.95
-
     else:
-
         state["verification_flag"] = False
-
         state["verification_notes"] = "Retry Required"
-
         state["evidence_score"] = 0.40
 
     return state
 
 
-# ----------------------------------
-# Router
-# ----------------------------------
-
 def route_verification(state: AgriSentryState):
-
     if state["verification_flag"]:
-
         return "verified"
 
     if state["retry_count"] >= 1:
-
         return "escalate"
 
     state["retry_count"] += 1
@@ -160,21 +154,37 @@ def route_verification(state: AgriSentryState):
 
 
 # ----------------------------------
-# Graph
+# Graph Construction
 # ----------------------------------
 
 workflow = StateGraph(AgriSentryState)
 
-workflow.add_node("DiagnosticianAgent", diagnostician_agent)
+workflow.add_node(
+    "DiagnosticianAgent",
+    diagnostician_agent,
+)
 
-workflow.add_node("ProcurementAgent", procurement_agent)
+workflow.add_node(
+    "ProcurementAgent",
+    procurement_agent,
+)
 
-workflow.add_node("MarketAgent", market_agent)
+workflow.add_node(
+    "MarketAgent",
+    market_agent,
+)
 
-workflow.add_node("VerificationGate", verification_gate)
+workflow.add_node(
+    "VerificationGate",
+    verification_gate,
+)
 
-workflow.set_entry_point("DiagnosticianAgent")
+# Entry point
+workflow.set_entry_point(
+    "DiagnosticianAgent"
+)
 
+# Main workflow
 workflow.add_edge(
     "DiagnosticianAgent",
     "ProcurementAgent",
@@ -190,6 +200,7 @@ workflow.add_edge(
     "VerificationGate",
 )
 
+# Verification routing
 workflow.add_conditional_edges(
     "VerificationGate",
     route_verification,
@@ -200,4 +211,5 @@ workflow.add_conditional_edges(
     },
 )
 
+# Compile graph
 app = workflow.compile()

@@ -1,0 +1,29 @@
+{
+  "split_name": "clean_grouped_split",
+  "random_seed": 42,
+  "train_ratio": 0.8,
+  "val_ratio": 0.1,
+  "test_ratio": 0.1,
+  "total_images": 54293,
+  "total_unique_hashes": 54272,
+  "cross_split_leakage_groups": 0,
+  "cross_split_leakage_images": 0,
+  "splits": {
+    "train": {
+      "samples": 43433,
+      "unique_hashes": 43417,
+      "manifest_file": "clean_split/train.txt"
+    },
+    "val": {
+      "samples": 5429,
+      "unique_hashes": 5427,
+      "manifest_file": "clean_split/val.txt"
+    },
+    "test": {
+      "samples": 5431,
+      "unique_hashes": 5428,
+      "manifest_file": "clean_split/test.txt"
+    }
+  },
+  "created_at": "2026-09-16T13:00:00"
+}
