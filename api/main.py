@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,6 +79,11 @@ class DiagnoseRequest(BaseModel):
         description="Farmer's agricultural question or symptom",
     )
 
+    language: Optional[str] = Field(
+        default="en",
+        description="Language code, for example en or hi",
+    )
+
 
 # ----------------------------------
 # Root Endpoint
@@ -119,8 +124,9 @@ def diagnose(request: DiagnoseRequest) -> dict[str, Any]:
 
         # Crop and region information
         "crop_details": {
-            "crop": request.crop,
-            "region": request.region,
+            "crop": request.crop.strip().lower(),
+            "region": request.region.strip().lower(),
+            "language": (request.language or "en").strip().lower(),
         },
 
         # Existing diagnosis

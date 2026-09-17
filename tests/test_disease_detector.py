@@ -197,6 +197,138 @@ class TestAgriSentryDiseaseDetector(unittest.TestCase):
         self.assertIn("known_limitations", meta)
         self.assertIn("domain_gap_analysis", meta)
 
+    # 18. Bilingual language support
+    def test_18_language_support(self):
+        with open(SAMPLE_LEAF, "rb") as f:
+            response = self.client.post(
+                "/diagnosis",
+                files={"image": ("test_leaf.jpg", f, "image/jpeg")},
+                data={"crop": "tomato", "region": "Punjab", "language": "hi"}
+            )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(data.get("language"), "hi")
+        self.assertIn("सफलतापूर्वक", data["diagnosis"]["message"])
+
+    # 19. Peach + Punjab workflow exact match (Tier 1)
+    def test_19_peach_punjab_workflow_exact_match(self):
+        from api.agents.graph import app as graph_app
+        state = {
+            "user_query": "Peach bacterial spot management in Punjab",
+            "crop_details": {
+                "crop": "peach",
+                "region": "Punjab",
+                "disease": "Peach___Bacterial_spot",
+                "disease_display_name": "Peach Bacterial Spot",
+                "language": "en"
+            },
+            "diagnostic_result": {"status": "success", "crop": "peach", "disease": "Peach___Bacterial_spot"},
+            "rag_context": [],
+            "vendor_options": [],
+            "mandi_prices": {},
+            "current_step": "init",
+            "verification_flag": False,
+            "retry_count": 0,
+            "verification_notes": "",
+            "evidence_score": 0.0,
+        }
+        res = graph_app.invoke(state)
+        self.assertEqual(res["current_step"], "market_complete")
+        self.assertTrue(res["verification_flag"])
+        self.assertEqual(res["evidence_score"], 0.95)
+        diag = res["diagnostic_result"]
+        self.assertEqual(diag.get("match_level"), "exact")
+        self.assertIn("PAU", diag.get("source_name", ""))
+        self.assertIn("pau.edu", diag.get("source_url", ""))
+        self.assertIn("Copper Oxychloride", diag.get("primary_advisory", ""))
+        self.assertIn("Streptocycline", diag.get("primary_advisory", ""))
+        self.assertIn("shot-hole", diag.get("primary_advisory", "").lower())
+
+    # 20. Peach + Punjab Hindi workflow
+    def test_20_peach_punjab_hindi_workflow(self):
+        from api.agents.graph import app as graph_app
+        state = {
+            "user_query": "",
+            "crop_details": {
+                "crop": "peach",
+                "region": "Punjab",
+                "disease": "Peach___Bacterial_spot",
+                "language": "hi"
+            },
+            "diagnostic_result": {"status": "success", "crop": "peach", "disease": "Peach___Bacterial_spot"},
+            "rag_context": [],
+            "vendor_options": [],
+            "mandi_prices": {},
+            "current_step": "init",
+            "verification_flag": False,
+            "retry_count": 0,
+            "verification_notes": "",
+            "evidence_score": 0.0,
+        }
+        res = graph_app.invoke(state)
+        self.assertTrue(res["verification_flag"])
+        self.assertEqual(res["evidence_score"], 0.95)
+        self.assertIn("आड़ू", res["diagnostic_result"].get("primary_advisory", ""))
+        self.assertIn("कॉपर ऑक्सीक्लोराइड", res["diagnostic_result"].get("primary_advisory", ""))
+
+    # 21. Tier 2 General disease recommendation workflow
+    def test_21_tier2_general_disease_workflow(self):
+        from api.agents.graph import app as graph_app
+        state = {
+            "user_query": "bacterial spot control",
+            "crop_details": {
+                "crop": "strawberry",
+                "region": "Punjab",
+                "disease": "bacterial_spot",
+                "language": "en"
+            },
+            "diagnostic_result": {"status": "success", "crop": "strawberry", "disease": "bacterial_spot"},
+            "rag_context": [],
+            "vendor_options": [],
+            "mandi_prices": {},
+            "current_step": "init",
+            "verification_flag": False,
+            "retry_count": 0,
+            "verification_notes": "",
+            "evidence_score": 0.0,
+        }
+        res = graph_app.invoke(state)
+        self.assertTrue(res["verification_flag"])
+        self.assertEqual(res["evidence_score"], 0.75)
+        diag = res["diagnostic_result"]
+        self.assertEqual(diag.get("match_level"), "disease_level")
+        self.assertTrue(diag.get("is_general_advisory"))
+        self.assertIn("General disease-level advisory", diag.get("primary_advisory", ""))
+
+    # 22. Tier 3 Safety fallback workflow
+    def test_22_tier3_safety_fallback_workflow(self):
+        from api.agents.graph import app as graph_app
+        state = {
+            "user_query": "unidentified anomaly in field",
+            "crop_details": {
+                "crop": "dragonfruit",
+                "region": "Ladakh",
+                "disease": "unknown_anomaly",
+                "language": "en"
+            },
+            "diagnostic_result": {"status": "success", "crop": "dragonfruit", "disease": "unknown_anomaly"},
+            "rag_context": [],
+            "vendor_options": [],
+            "mandi_prices": {},
+            "current_step": "init",
+            "verification_flag": False,
+            "retry_count": 0,
+            "verification_notes": "",
+            "evidence_score": 0.0,
+        }
+        res = graph_app.invoke(state)
+        self.assertFalse(res["verification_flag"])
+        self.assertEqual(res["evidence_score"], 0.35)
+        diag = res["diagnostic_result"]
+        self.assertEqual(diag.get("match_level"), "fallback")
+        self.assertIn("Consult the nearest ICAR", diag.get("primary_advisory", ""))
+
 
 if __name__ == "__main__":
     unittest.main()

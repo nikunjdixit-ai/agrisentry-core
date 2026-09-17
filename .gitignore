@@ -160,4 +160,18 @@ config.local.*
 # ==============================
 # Generated Voice Outputs
 # ==============================
-voice_outputs/
+voice_outputs/
+
+# ==============================
+# Frontend / Node
+# ==============================
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+*.tsbuildinfo
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+
