@@ -40,13 +40,18 @@ rag = AgroRAG()
 
 def diagnostician_agent(state: AgriSentryState):
 
-    crop = state["crop_details"]["crop"]
-    region = state["crop_details"]["region"]
+    crop_details = state.get("crop_details", {})
+    crop = crop_details.get("crop", "unknown")
+    region = crop_details.get("region", "unknown")
+    disease = crop_details.get("disease") or crop_details.get("disease_display_name")
+    language = crop_details.get("language", "en")
 
     docs = rag.retrieve_agri_context(
         query=state["user_query"],
         crop=crop,
         region=region,
+        disease=disease,
+        language=language,
     )
 
     weather = get_weather_forecast.invoke(
@@ -60,13 +65,29 @@ def diagnostician_agent(state: AgriSentryState):
         doc.model_dump() for doc in docs
     ]
 
+    primary_doc = docs[0] if docs else None
+    primary_content = primary_doc.content if primary_doc else "Consult local agricultural extension officer."
+    primary_title = primary_doc.title if primary_doc else "General Advisory"
+    source_name = primary_doc.source_name if primary_doc else "ICAR / National Extension"
+    source_url = primary_doc.source_url if primary_doc else ""
+    retrieval_date = primary_doc.retrieval_date if primary_doc else "2026-09-17"
+    match_level = primary_doc.match_level if primary_doc else "fallback"
+    is_general = primary_doc.is_general_advisory if primary_doc else True
+
     existing_diagnosis = state.get("diagnostic_result")
-    if existing_diagnosis and isinstance(existing_diagnosis, dict) and existing_diagnosis.get("status") == "success":
+    if existing_diagnosis and isinstance(existing_diagnosis, dict) and existing_diagnosis.get("status") in ("success", "advisory_generated"):
         state["diagnostic_result"] = {
             **existing_diagnosis,
             "weather": weather,
             "treatment_advisories": [doc.title for doc in docs],
-            "primary_advisory": docs[0].content if docs else "Consult local agricultural extension officer.",
+            "primary_advisory": primary_content,
+            "advisory_title": primary_title,
+            "source_name": source_name,
+            "source_url": source_url,
+            "retrieval_date": retrieval_date,
+            "match_level": match_level,
+            "is_general_advisory": is_general,
+            "advisory_doc": primary_doc.model_dump() if primary_doc else {},
         }
     else:
         state["diagnostic_result"] = {
@@ -74,8 +95,17 @@ def diagnostician_agent(state: AgriSentryState):
             "crop": crop,
             "region": region,
             "weather": weather,
-            "suspected_issue": docs[0].title if docs else "General Advisory",
-            "actionable_advice": docs[0].content if docs else "Consult local agricultural extension officer.",
+            "suspected_issue": primary_title,
+            "actionable_advice": primary_content,
+            "treatment_advisories": [doc.title for doc in docs],
+            "primary_advisory": primary_content,
+            "advisory_title": primary_title,
+            "source_name": source_name,
+            "source_url": source_url,
+            "retrieval_date": retrieval_date,
+            "match_level": match_level,
+            "is_general_advisory": is_general,
+            "advisory_doc": primary_doc.model_dump() if primary_doc else {},
         }
 
     state["current_step"] = "diagnosis_complete"
@@ -117,36 +147,41 @@ def market_agent(state: AgriSentryState):
 
 def verification_gate(state: AgriSentryState):
 
-    if len(state["rag_context"]) > 0:
+    rag_docs = state.get("rag_context", [])
+    primary_doc = rag_docs[0] if rag_docs else {}
 
+    match_level = (
+        primary_doc.get("match_level", "fallback")
+        if isinstance(primary_doc, dict)
+        else "fallback"
+    )
+
+    if match_level == "exact":
         state["verification_flag"] = True
-
-        state["verification_notes"] = "Evidence Verified"
-
+        state["verification_notes"] = "Verified Exact Crop & Disease Match (Tier 1)"
         state["evidence_score"] = 0.95
 
+    elif match_level == "disease_level":
+        state["verification_flag"] = True
+        state["verification_notes"] = "General Disease-Level Advisory (Tier 2)"
+        state["evidence_score"] = 0.75
+
     else:
-
         state["verification_flag"] = False
-
-        state["verification_notes"] = "Retry Required"
-
-        state["evidence_score"] = 0.40
+        state["verification_notes"] = "Safety Fallback Applied — Verification Incomplete (Tier 3)"
+        state["evidence_score"] = 0.35
+        state["retry_count"] = state.get("retry_count", 0) + 1
 
     return state
 
 
 def route_verification(state: AgriSentryState):
 
-    if state["verification_flag"]:
-
+    if state.get("verification_flag"):
         return "verified"
 
-    if state["retry_count"] >= 1:
-
+    if state.get("retry_count", 0) >= 1:
         return "escalate"
-
-    state["retry_count"] += 1
 
     return "retry"
 

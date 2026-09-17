@@ -196,6 +196,7 @@ async def diagnose_crop(
     crop: str = Form("unknown"),
     region: str = Form("unknown"),
     query: str = Form(""),
+    language: str = Form("en"),
 ) -> Dict[str, Any]:
 
     # ----------------------------------
@@ -266,6 +267,15 @@ async def diagnose_crop(
 
     normalized_crop = crop.strip().lower()
     normalized_region = region.strip().lower()
+    normalized_language = language.strip().lower()
+
+    if normalized_language == "hi":
+        if model_result.get("status") == "no_detection":
+            model_result["message"] = "कोई स्पष्ट रोग लक्षण नहीं मिला। कृपया पत्ती की स्पष्ट फोटो अपलोड करें।"
+        elif "healthy" in str(model_result.get("disease", "")).lower():
+            model_result["message"] = "पत्ती स्वस्थ पाई गई।"
+        else:
+            model_result["message"] = "रोग की पहचान सफलतापूर्वक की गई।"
 
     detected_crop = model_result.get("crop")
     if (normalized_crop in ("", "unknown") or not normalized_crop) and detected_crop and detected_crop != "unknown":
@@ -275,10 +285,15 @@ async def diagnose_crop(
 
     if not workflow_query:
         disease_name = model_result.get("disease_display_name") or model_result.get("disease") or "disease"
-        workflow_query = (
-            f"{normalized_crop} {disease_name} treatment "
-            f"and management in {normalized_region}"
-        )
+        if normalized_language == "hi":
+            workflow_query = (
+                f"{normalized_crop} {disease_name} उपचार और प्रबंधन ({normalized_region})"
+            )
+        else:
+            workflow_query = (
+                f"{normalized_crop} {disease_name} treatment "
+                f"and management in {normalized_region}"
+            )
 
     initial_state: Dict[str, Any] = {
         "user_query": workflow_query,
@@ -286,6 +301,9 @@ async def diagnose_crop(
         "crop_details": {
             "crop": normalized_crop,
             "region": normalized_region,
+            "language": normalized_language,
+            "disease": model_result.get("disease"),
+            "disease_display_name": model_result.get("disease_display_name"),
         },
 
         "diagnostic_result": model_result,
@@ -338,6 +356,7 @@ async def diagnose_crop(
 
     return {
         "status": "success",
+        "language": normalized_language,
 
         "diagnosis": model_result,
 

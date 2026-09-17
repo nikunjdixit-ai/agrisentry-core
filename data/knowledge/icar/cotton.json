@@ -1,18 +1,46 @@
 [
   {
-    "title": "Cotton Whitefly Advisory",
-    "content": "Monitor whitefly population regularly. Install yellow sticky traps. Use only CIBRC-approved insecticides when ETL is reached.",
+    "title": "Cotton Whitefly (Bemisia tabaci) Management Advisory",
+    "content": "Crop: Cotton (Gossypium hirsutum)\nDisease/Pest: Whitefly (Bemisia tabaci)\nRegion: Punjab & North Cotton Zone\nAuthoritative Source: Punjab Agricultural University (PAU) / ICAR-Central Institute for Cotton Research (CICR)\nOfficial Bulletin: https://cicr.icar.gov.in\nRetrieval Date: 2026-09-17\nMatch Level: Verified Exact Crop & Disease Match\n\n1. Surveillance & Economic Threshold Level (ETL):\n• Regularly monitor whitefly populations on 3 leaves per plant (upper, middle, lower).\n• Economic Threshold Level (ETL): 6-8 adults per leaf or 20 nymphs per leaf.\n• Install yellow sticky traps @ 20 traps/acre for mass trapping and monitoring.\n\n2. Management & Chemical Treatment (CIBRC / PAU Approved):\n• Below ETL: Spray neem formulation (Azadirachtin 0.03% EC / 300 ppm @ 1.0 L/acre).\n• Above ETL: Spray CIBRC-registered insecticides such as Pyriproxyfen 10% EC @ 500 mL/acre or Diafenthiuron 50% WP @ 200 g/acre or Afidopyropen 50 g/L DC @ 400 mL/acre.\n• Avoid tank-mixing pyrethroids which induce whitefly resurgence.\n• PHI & Safety: Pre-Harvest Interval is 21-30 days.",
     "crop_type": "cotton",
     "region": "Punjab",
     "problem_category": "pest",
-    "compliance_safety_level": "cibrc_registered"
+    "compliance_safety_level": "cibrc_registered",
+    "disease_name": "Cotton___Whitefly",
+    "source_name": "Punjab Agricultural University (PAU) / ICAR-CICR",
+    "source_url": "https://cicr.icar.gov.in",
+    "retrieval_date": "2026-09-17",
+    "is_general_advisory": false,
+    "match_level": "exact",
+    "cultural_precautions": "ETL monitoring; yellow sticky traps; avoid excessive nitrogen.",
+    "sanitation_guidance": "Eradicate alternative weed hosts (e.g. Kanghi buti, Peeli buti).",
+    "moisture_irrigation_guidance": "Avoid water stress during square formation.",
+    "non_chemical_management": "Yellow sticky traps; neem based formulations.",
+    "chemical_treatment": "Pyriproxyfen 10% EC @ 500 mL/acre or Diafenthiuron 50% WP @ 200 g/acre at ETL.",
+    "cibrc_registration_details": "Pyriproxyfen 10% EC and Diafenthiuron 50% WP CIBRC approved for cotton whitefly.",
+    "phi_safety_limitations": "PHI: 21-30 days.",
+    "content_hi": "कपास सफेद मक्खी प्रबंधन (PAU / ICAR-CICR):\nनियमित निगरानी करें। आर्थिक क्षति स्तर (ETL: 6-8 वयस्क/पत्ती) पहुंचने पर ही पाइरीप्रॉक्सीफेन 10% ईसी @ 500 मिली/एकड़ या डायाफेन्थियुरॉन 50% डब्ल्यूपी @ 200 ग्राम/एकड़ का छिड़काव करें। PHI: 21-30 दिन।"
   },
   {
-    "title": "Cotton Leaf Curl Virus",
-    "content": "Use virus-free seed, remove infected plants and control whitefly vector.",
+    "title": "Cotton Leaf Curl Virus (CLCuV) Advisory",
+    "content": "Crop: Cotton (Gossypium hirsutum)\nDisease: Cotton Leaf Curl Virus (CLCuV)\nRegion: Punjab & North Cotton Zone\nAuthoritative Source: PAU Ludhiana / ICAR-CICR\nOfficial Bulletin: https://cicr.icar.gov.in\nRetrieval Date: 2026-09-17\nMatch Level: Verified Exact Crop & Disease Match\n\n1. Symptoms & Management:\n• Thickening of smaller veins, upward/downward leaf curling, and enation (leaf-like outgrowths) on underside of leaves.\n• Transmitted exclusively by whitefly (Bemisia tabaci).\n• Non-chemical: Cultivate PAU-recommended CLCuV-tolerant hybrids; eradicate alternative weed hosts like Abutilon indicum.\n• Vector Management: Keep whitefly population strictly below ETL.",
     "crop_type": "cotton",
     "region": "Punjab",
     "problem_category": "viral_disease",
-    "compliance_safety_level": "standard"
+    "compliance_safety_level": "standard",
+    "disease_name": "Cotton___Leaf_Curl_Virus",
+    "source_name": "PAU Ludhiana / ICAR-CICR",
+    "source_url": "https://cicr.icar.gov.in",
+    "retrieval_date": "2026-09-17",
+    "is_general_advisory": false,
+    "match_level": "exact",
+    "cultural_precautions": "Tolerant hybrids; weed host eradication.",
+    "sanitation_guidance": "Destroy infected stumps; clear field bunds.",
+    "moisture_irrigation_guidance": "Regular irrigation.",
+    "non_chemical_management": "Resistant cultivars.",
+    "chemical_treatment": "Manage whitefly vector with CIBRC registered insecticides; no direct viricide exists.",
+    "cibrc_registration_details": "Insecticide management for whitefly vector.",
+    "phi_safety_limitations": "Follow vector insecticide PHI.",
+    "content_hi": "कपास पत्ती मरोड़ विषाणु (CLCuV):\nसहनशील किस्में अपनाएं और सफेद मक्खी का नियंत्रण समय पर करें। विषाणु के लिए सीधे कोई दवा नहीं होती।"
   }
 ]

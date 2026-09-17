@@ -34,12 +34,26 @@ class DocumentLoader:
                 for item in data:
                     documents.append(
                         AgriDocument(
-                            title=item["title"],
-                            content=item["content"],
-                            crop_type=item["crop_type"],
-                            region=item["region"],
-                            problem_category=item["problem_category"],
-                            compliance_safety_level=item["compliance_safety_level"],
+                            title=item.get("title", "Agricultural Advisory"),
+                            content=item.get("content", ""),
+                            crop_type=item.get("crop_type", "general"),
+                            region=item.get("region", "general"),
+                            problem_category=item.get("problem_category", "general"),
+                            compliance_safety_level=item.get("compliance_safety_level", "standard"),
+                            disease_name=item.get("disease_name", ""),
+                            source_name=item.get("source_name", "ICAR / National Extension"),
+                            source_url=item.get("source_url", "https://icar.org.in"),
+                            retrieval_date=item.get("retrieval_date", "2026-09-17"),
+                            is_general_advisory=bool(item.get("is_general_advisory", False)),
+                            match_level=item.get("match_level", "exact"),
+                            cultural_precautions=item.get("cultural_precautions", ""),
+                            sanitation_guidance=item.get("sanitation_guidance", ""),
+                            moisture_irrigation_guidance=item.get("moisture_irrigation_guidance", ""),
+                            non_chemical_management=item.get("non_chemical_management", ""),
+                            chemical_treatment=item.get("chemical_treatment", ""),
+                            cibrc_registration_details=item.get("cibrc_registration_details", ""),
+                            phi_safety_limitations=item.get("phi_safety_limitations", ""),
+                            content_hi=item.get("content_hi", ""),
                         )
                     )
 

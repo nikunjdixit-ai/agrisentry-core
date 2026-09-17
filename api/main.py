@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,6 +62,11 @@ class DiagnoseRequest(BaseModel):
         description="Farmer's problem or diagnosis query",
     )
 
+    language: Optional[str] = Field(
+        default="en",
+        description="Language code, for example en or hi",
+    )
+
 
 # --------------------------------------------------
 # Root Endpoint
@@ -104,6 +109,7 @@ def diagnose(request: DiagnoseRequest) -> dict[str, Any]:
         "crop_details": {
             "crop": request.crop.strip().lower(),
             "region": request.region.strip().lower(),
+            "language": (request.language or "en").strip().lower(),
         },
 
         "diagnostic_result": None,
