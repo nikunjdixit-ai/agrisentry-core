@@ -14,5 +14,13 @@
     "region": "Punjab",
     "problem_category": "viral_disease",
     "compliance_safety_level": "standard"
+  },
+  {
+    "title": "Cotton Low Soil Moisture Advisory",
+    "content": "Monitor soil moisture regularly. When soil moisture is low, follow the recommended irrigation schedule for the crop and local soil conditions. Avoid unnecessary over-irrigation.",
+    "crop_type": "cotton",
+    "region": "Lucknow",
+    "problem_category": "water_stress",
+    "compliance_safety_level": "standard"
   }
 ]

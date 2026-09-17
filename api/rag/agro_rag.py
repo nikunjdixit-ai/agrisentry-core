@@ -133,7 +133,7 @@ class AgroRAG:
         )
 
     # ----------------------------------
-    # Convert Chroma Metadata Safely
+    # Convert Chroma Metadata
     # ----------------------------------
 
     @staticmethod
@@ -144,28 +144,42 @@ class AgroRAG:
         try:
 
             title = str(
-                metadata.get("title") or "Agricultural Advisory"
+                metadata.get(
+                    "title",
+                    "Agricultural Advisory"
+                )
             )
 
             content = str(
-                metadata.get("content") or ""
+                metadata.get("content", "")
             )
 
             crop_type = str(
-                metadata.get("crop_type") or "unknown"
+                metadata.get(
+                    "crop_type",
+                    "unknown"
+                )
             )
 
             region = str(
-                metadata.get("region") or "general"
+                metadata.get(
+                    "region",
+                    "general"
+                )
             )
 
             problem_category = str(
-                metadata.get("problem_category") or "general"
+                metadata.get(
+                    "problem_category",
+                    "general"
+                )
             )
 
             compliance_safety_level = str(
-                metadata.get("compliance_safety_level")
-                or "standard"
+                metadata.get(
+                    "compliance_safety_level",
+                    "standard"
+                )
             )
 
             return AgriDocument(
@@ -185,13 +199,71 @@ class AgroRAG:
 
             return None
 
+    # ----------------------------------
+    # Convert Chroma Distance
+    # ----------------------------------
+
+    def _distance_to_similarity(
+        self,
+        distance: float,
+    ) -> float:
+
+        """
+        Convert Chroma distance into an approximate
+        similarity score.
+
+        Chroma commonly uses L2 distance by default.
+
+        For normalized SentenceTransformer embeddings:
+
+            cosine_similarity ≈ 1 - (L2_distance² / 2)
+
+        If the collection uses cosine distance:
+
+            similarity = 1 - distance
+        """
+
+        collection_metadata = (
+            self.collection.metadata or {}
+        )
+
+        distance_space = collection_metadata.get(
+            "hnsw:space",
+            "l2"
+        )
+
+        if distance_space == "cosine":
+
+            similarity = 1.0 - distance
+
+        elif distance_space == "ip":
+
+            # Chroma inner-product distance
+            similarity = 1.0 - distance
+
+        else:
+
+            # Default Chroma distance = L2
+            similarity = 1.0 - (
+                (distance ** 2) / 2.0
+            )
+
+        # Keep score inside [0, 1]
+        return max(
+            0.0,
+            min(1.0, similarity)
+        )
+
+    # ----------------------------------
+    # Agricultural Context Retrieval
+    # ----------------------------------
 
     def retrieve_agri_context(
         self,
         query: str,
         crop: str,
         region: str,
-        similarity_threshold: float = 0.55,
+        similarity_threshold: float = 0.45,
     ) -> List[AgriDocument]:
 
         crop = self._normalize_text(crop)
@@ -199,19 +271,50 @@ class AgroRAG:
         query = query.strip()
 
         if not query:
+
             query = (
-                f"{crop} disease treatment "
+                f"{crop} agricultural problem "
+                f"treatment advisory "
                 f"in {region}"
             )
 
+        # ----------------------------------
+        # Build a richer retrieval query
+        # ----------------------------------
+
+        retrieval_query = (
+            f"Crop: {crop}. "
+            f"Region: {region}. "
+            f"Agricultural advisory: {query}"
+        )
+
+        print(
+            "\n[RAG] Retrieval query:"
+        )
+        print(
+            retrieval_query
+        )
+
         try:
 
-            query_embedding = self.embedding_model.encode(
-                query
-            ).tolist()
+            # ----------------------------------
+            # Generate embedding
+            # ----------------------------------
+
+            query_embedding = (
+                self.embedding_model.encode(
+                    retrieval_query
+                ).tolist()
+            )
+
+            # ----------------------------------
+            # Query ChromaDB
+            # ----------------------------------
 
             results = self.collection.query(
-                query_embeddings=[query_embedding],
+                query_embeddings=[
+                    query_embedding
+                ],
                 n_results=10,
                 where={
                     "crop_type": crop
@@ -223,8 +326,6 @@ class AgroRAG:
                 ],
             )
 
-            # ChromaDB typing is broad/uncertain.
-            # Cast the returned values to safe runtime structures.
             raw_metadatas = cast(
                 Any,
                 results.get("metadatas")
@@ -236,28 +337,49 @@ class AgroRAG:
             )
 
             if not raw_metadatas:
+
                 return [
-                    self._fallback_document(crop, region)
+                    self._fallback_document(
+                        crop,
+                        region
+                    )
                 ]
 
-            metadatas = raw_metadatas[0] or []
+            metadatas = (
+                raw_metadatas[0] or []
+            )
 
-            if raw_distances:
-                distances = raw_distances[0] or []
-            else:
-                distances = []
+            distances = (
+                raw_distances[0]
+                if raw_distances
+                else []
+            )
 
             if not metadatas:
+
                 return [
-                    self._fallback_document(crop, region)
+                    self._fallback_document(
+                        crop,
+                        region
+                    )
                 ]
+
+            # ----------------------------------
+            # Separate region-specific and
+            # general crop documents
+            # ----------------------------------
 
             region_documents = []
             general_crop_documents = []
 
-            for index, raw_metadata in enumerate(metadatas):
+            for index, raw_metadata in enumerate(
+                metadatas
+            ):
 
-                if not isinstance(raw_metadata, dict):
+                if not isinstance(
+                    raw_metadata,
+                    dict
+                ):
                     continue
 
                 metadata = cast(
@@ -266,8 +388,13 @@ class AgroRAG:
                 )
 
                 if index < len(distances):
-                    distance_value = distances[index]
+
+                    distance_value = (
+                        distances[index]
+                    )
+
                 else:
+
                     distance_value = None
 
                 try:
@@ -275,30 +402,62 @@ class AgroRAG:
                     distance = (
                         float(distance_value)
                         if distance_value is not None
-                        else 1.0
+                        else 999.0
                     )
 
-                except (TypeError, ValueError):
+                except (
+                    TypeError,
+                    ValueError
+                ):
 
-                    distance = 1.0
+                    distance = 999.0
 
-                # ChromaDB distance is lower for more similar
-                # documents. This is an approximate similarity.
-                similarity = 1.0 - distance
+                # ----------------------------------
+                # Correct distance → similarity
+                # ----------------------------------
 
-                if similarity < similarity_threshold:
+                similarity = (
+                    self._distance_to_similarity(
+                        distance
+                    )
+                )
+
+                print(
+                    f"[RAG] Document "
+                    f"{index}: "
+                    f"distance={distance:.4f}, "
+                    f"similarity={similarity:.4f}"
+                )
+
+                # ----------------------------------
+                # Similarity filtering
+                # ----------------------------------
+
+                if (
+                    similarity
+                    < similarity_threshold
+                ):
                     continue
 
                 document_region = str(
-                    metadata.get("region") or ""
+                    metadata.get(
+                        "region",
+                        ""
+                    )
                 )
 
-                document = self._convert_metadata(
-                    metadata
+                document = (
+                    self._convert_metadata(
+                        metadata
+                    )
                 )
 
                 if document is None:
                     continue
+
+                # ----------------------------------
+                # Region-specific document
+                # ----------------------------------
 
                 if self._region_matches(
                     document_region,
@@ -312,6 +471,10 @@ class AgroRAG:
                         )
                     )
 
+                # ----------------------------------
+                # Same crop but general region
+                # ----------------------------------
+
                 else:
 
                     general_crop_documents.append(
@@ -321,6 +484,9 @@ class AgroRAG:
                         )
                     )
 
+            # ----------------------------------
+            # Sort by similarity
+            # ----------------------------------
 
             region_documents.sort(
                 key=lambda item: item[0],
@@ -332,32 +498,62 @@ class AgroRAG:
                 reverse=True,
             )
 
+            # ----------------------------------
+            # Select documents
+            # ----------------------------------
+
             selected_documents = [
                 document
-                for _, document in region_documents
+                for _, document
+                in region_documents
             ]
 
-            # Add same-crop general documents if needed.
+            # Add general same-crop documents
+            # if region-specific documents
+            # are insufficient.
             if len(selected_documents) < 3:
 
                 remaining_slots = (
                     3 - len(selected_documents)
                 )
 
-                for similarity, document in general_crop_documents:
+                for (
+                    similarity,
+                    document
+                ) in general_crop_documents:
 
                     if remaining_slots <= 0:
                         break
 
-                    selected_documents.append(document)
+                    selected_documents.append(
+                        document
+                    )
+
                     remaining_slots -= 1
 
+            # ----------------------------------
+            # Final fallback
+            # ----------------------------------
 
             if not selected_documents:
 
+                print(
+                    "[RAG] No sufficiently "
+                    "similar document found."
+                )
+
                 return [
-                    self._fallback_document(crop, region)
+                    self._fallback_document(
+                        crop,
+                        region
+                    )
                 ]
+
+            print(
+                f"[RAG] Selected "
+                f"{len(selected_documents)} "
+                f"document(s)."
+            )
 
             return selected_documents[:5]
 
@@ -368,5 +564,8 @@ class AgroRAG:
             )
 
             return [
-                self._fallback_document(crop, region)
+                self._fallback_document(
+                    crop,
+                    region
+                )
             ]

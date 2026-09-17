@@ -10,6 +10,10 @@ from api.routes.voice import router as voice_router
 from api.routes.diagnosis import router as diagnosis_router
 
 
+# ----------------------------------
+# FastAPI Application
+# ----------------------------------
+
 app = FastAPI(
     title="AgriSentry Core API",
     version="1.0.0",
@@ -17,18 +21,18 @@ app = FastAPI(
 )
 
 
-# --------------------------------------------------
+# ----------------------------------
 # Routers
-# --------------------------------------------------
+# ----------------------------------
 
 app.include_router(telemetry_router)
 app.include_router(voice_router)
 app.include_router(diagnosis_router)
 
 
-# --------------------------------------------------
+# ----------------------------------
 # CORS
-# --------------------------------------------------
+# ----------------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,9 +43,9 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
-# Request Schema
-# --------------------------------------------------
+# ----------------------------------
+# Diagnosis Request Model
+# ----------------------------------
 
 class DiagnoseRequest(BaseModel):
     crop: str = Field(
@@ -63,9 +67,9 @@ class DiagnoseRequest(BaseModel):
     )
 
 
-# --------------------------------------------------
+# ----------------------------------
 # Root Endpoint
-# --------------------------------------------------
+# ----------------------------------
 
 @app.get("/", tags=["System"])
 def root() -> dict[str, str]:
@@ -75,9 +79,9 @@ def root() -> dict[str, str]:
     }
 
 
-# --------------------------------------------------
-# Health Endpoint
-# --------------------------------------------------
+# ----------------------------------
+# Health Check
+# ----------------------------------
 
 @app.get("/health", tags=["System"])
 def health() -> dict[str, str]:
@@ -87,40 +91,53 @@ def health() -> dict[str, str]:
     }
 
 
-# --------------------------------------------------
+# ----------------------------------
 # Diagnosis Endpoint
-# --------------------------------------------------
+# ----------------------------------
 
 @app.post("/diagnose", tags=["Diagnosis"])
-def diagnose(
-    request: DiagnoseRequest,
-) -> dict[str, Any]:
-    """
-    Run the AgriSentry multi-agent diagnosis workflow.
-    """
+def diagnose(request: DiagnoseRequest) -> dict[str, Any]:
 
+    # Initial state for Member 1 + Member 2 + Member 3
     state: AgriSentryState = {
+
+        # Farmer query
         "user_query": request.query,
 
+        # Crop and region information
         "crop_details": {
             "crop": request.crop,
             "region": request.region,
         },
 
+        # Existing diagnosis
         "diagnostic_result": None,
+
+        # RAG context
         "rag_context": [],
+
+        # Procurement information
         "vendor_options": [],
+
+        # Mandi information
         "mandi_prices": {},
 
+        # ----------------------------------
+        # Member 3 Telemetry Context
+        # ----------------------------------
+        "telemetry_context": {},
+
+        # Workflow tracking
         "current_step": "request_received",
 
+        # Verification
         "verification_flag": False,
         "retry_count": 0,
         "verification_notes": "",
         "evidence_score": 0.0,
     }
 
-    # Run multi-agent workflow
+    # Run complete LangGraph workflow
     result = graph_app.invoke(
         cast(Any, state)
     )
