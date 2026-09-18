@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image, UnidentifiedImageError
-from ultralytics import YOLO
 
 # Project paths
 CV_DIR = Path(__file__).resolve().parents[1]
@@ -151,12 +150,31 @@ class DiseaseDetector:
                     f"Checked '{DEFAULT_MODEL_PATH}' and '{BACKUP_MODEL_PATH}'."
                 )
 
-        print(f"[AgriSentry CV] Loading disease detector model on CPU from: {target_path}")
         self.model_path = target_path
-        self.model = YOLO(str(target_path))
-        self.class_names = self.model.names
-        self.num_classes = len(self.class_names)
-        print(f"[AgriSentry CV] Model loaded successfully with {self.num_classes} classes.")
+        self._model = None
+        self._class_names = None
+
+    def _ensure_loaded(self) -> None:
+        if self._model is None:
+            from ultralytics import YOLO
+            print(f"[AgriSentry CV] Loading disease detector model on CPU from: {self.model_path}")
+            self._model = YOLO(str(self.model_path))
+            self._class_names = self._model.names
+            print(f"[AgriSentry CV] Model loaded successfully with {len(self._class_names)} classes.")
+
+    @property
+    def model(self) -> Any:
+        self._ensure_loaded()
+        return self._model
+
+    @property
+    def class_names(self) -> Any:
+        self._ensure_loaded()
+        return self._class_names
+
+    @property
+    def num_classes(self) -> int:
+        return len(self.class_names)
 
     @classmethod
     def get_instance(cls, model_path: Optional[Union[str, Path]] = None) -> "DiseaseDetector":

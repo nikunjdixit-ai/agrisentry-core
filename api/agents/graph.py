@@ -51,10 +51,25 @@ class AgriSentryState(TypedDict):
 
 
 # ============================================================
-# RAG
+# RAG (Lazy Singleton Proxy)
 # ============================================================
 
-rag = AgroRAG()
+_rag_instance: Optional[AgroRAG] = None
+
+
+def get_rag() -> AgroRAG:
+    global _rag_instance
+    if _rag_instance is None:
+        _rag_instance = AgroRAG()
+    return _rag_instance
+
+
+class _LazyRAGProxy:
+    def __getattr__(self, name: str) -> Any:
+        return getattr(get_rag(), name)
+
+
+rag = cast(AgroRAG, _LazyRAGProxy())
 
 
 # ============================================================

@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from PIL import Image
-from ultralytics import YOLO
 
 from api.agents.graph import app as agri_workflow
 
@@ -79,6 +78,8 @@ def get_model() -> Any:
             "YOLO model file not found. "
             f"Searched paths:\n{searched_paths}"
         )
+
+    from ultralytics import YOLO
 
     print(
         f"Loading YOLO model from: {model_path}"

@@ -1,9 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, Any, Optional, cast
 
-import chromadb
-from sentence_transformers import SentenceTransformer
-
 from api.rag.document_loader import DocumentLoader
 from api.rag.models import AgriDocument
 
@@ -17,29 +14,59 @@ class AgroRAG:
         # ----------------------------------
 
         project_root = Path(__file__).resolve().parents[2]
-        chroma_path = project_root / "chroma_data"
+        self._chroma_path = project_root / "chroma_data"
+        self._client = None
+        self._collection = None
+        self._embedding_model = None
+        self._seeded = False
 
-        self.client = chromadb.PersistentClient(
-            path=str(chroma_path)
-        )
+    @property
+    def client(self) -> Any:
+        if self._client is None:
+            import chromadb
+            self._client = chromadb.PersistentClient(
+                path=str(self._chroma_path)
+            )
+        return self._client
 
-        self.collection = self.client.get_or_create_collection(
-            name="agri_documents"
-        )
+    @property
+    def collection(self) -> Any:
+        if self._collection is None:
+            self._collection = self.client.get_or_create_collection(
+                name="agri_documents"
+            )
+        return self._collection
 
-        self.embedding_model = SentenceTransformer(
-            "all-MiniLM-L6-v2"
-        )
+    @property
+    def embedding_model(self) -> Any:
+        if self._embedding_model is None:
+            from sentence_transformers import SentenceTransformer
+            self._embedding_model = SentenceTransformer(
+                "all-MiniLM-L6-v2"
+            )
+        return self._embedding_model
 
-        self._seed_documents()
+    def _ensure_seeded(self) -> None:
+        if not self._seeded:
+            try:
+                loader = DocumentLoader()
+                docs = loader.load_documents()
+                current_count = self.collection.count()
+                if current_count < len(docs):
+                    self._seed_documents(docs=docs)
+            except Exception as err:
+                print(f"Chroma seed check note: {err}")
+                self._seed_documents()
+            self._seeded = True
 
     # ----------------------------------
     # Seed Knowledge Base
     # ----------------------------------
 
-    def _seed_documents(self) -> None:
-        loader = DocumentLoader()
-        docs = loader.load_documents()
+    def _seed_documents(self, docs: Optional[List[AgriDocument]] = None) -> None:
+        if docs is None:
+            loader = DocumentLoader()
+            docs = loader.load_documents()
 
         if not docs:
             print("No knowledge documents found.")
@@ -282,6 +309,7 @@ class AgroRAG:
             print(retrieval_query.encode("ascii", "backslashreplace").decode("ascii"))
 
         try:
+            self._ensure_seeded()
             query_embedding = self.embedding_model.encode(semantic_query).tolist()
 
             # ----------------------------------------------------
