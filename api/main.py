@@ -1,5 +1,11 @@
+import sys
 from pathlib import Path
 from typing import Any, Optional, cast
+
+# Ensure project root is on sys.path for absolute imports
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -165,3 +171,15 @@ def diagnose(request: DiagnoseRequest) -> dict[str, Any]:
         dict[str, Any],
         result,
     )
+
+
+# ----------------------------------
+# Production Uvicorn Entry Point
+# ----------------------------------
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=False)

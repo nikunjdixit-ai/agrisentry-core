@@ -2,44 +2,35 @@
 # AgriSentry - Core Dependencies
 # ==============================
 
-# Computer Vision
+# Computer Vision & Deep Learning
 ultralytics
 opencv-python-headless
 pillow
-
-# Deep Learning
 torch
 torchvision
 
-# Machine Learning
+# Machine Learning & Scientific Computing
 scikit-learn
 xgboost
-
-# Data Processing
 numpy
 pandas
 scipy
 
-# Visualization
-matplotlib
-seaborn
-
-# API / Model Serving
+# API & ASGI Model Serving
 fastapi
 uvicorn[standard]
 pydantic
 python-multipart>=0.0.9
 
-# Agent Orchestration & RAG
+# Multi-Agent Workflow & RAG Vector Search
+sentence-transformers
+chromadb
 langgraph
 langchain-core
-chromadb
 
-# HTTP / External APIs
+# HTTP & External Services
 requests
 httpx
-
-# Environment Variables
 python-dotenv
 
 # Utilities
@@ -47,7 +38,7 @@ tqdm
 joblib
 pyyaml
 
-# Telemetry & Vernacular Voice / Telephony
+# Telemetry & Vernacular Voice Pipeline
 twilio>=8.0.0
 edge-tts>=6.1.0
 openai-whisper
