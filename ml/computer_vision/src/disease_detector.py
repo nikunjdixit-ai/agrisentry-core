@@ -23,6 +23,7 @@ from PIL import Image, UnidentifiedImageError
 CV_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL_PATH = CV_DIR / "models" / "agrisentry_disease_model.pt"
 BACKUP_MODEL_PATH = CV_DIR.parents[1] / "runs" / "plantvillage_yolov8n" / "weights" / "best.pt"
+NANO_FALLBACK_PATH = CV_DIR.parents[1] / "yolov8n.pt"
 
 # Versioning
 MODEL_NAME = "agrisentry_disease_model"
@@ -144,10 +145,12 @@ class DiseaseDetector:
                 target_path = DEFAULT_MODEL_PATH
             elif BACKUP_MODEL_PATH.exists():
                 target_path = BACKUP_MODEL_PATH
+            elif NANO_FALLBACK_PATH.exists():
+                target_path = NANO_FALLBACK_PATH
             else:
                 raise FileNotFoundError(
                     f"AgriSentry disease model not found. "
-                    f"Checked '{DEFAULT_MODEL_PATH}' and '{BACKUP_MODEL_PATH}'."
+                    f"Checked '{DEFAULT_MODEL_PATH}', '{BACKUP_MODEL_PATH}', and '{NANO_FALLBACK_PATH}'."
                 )
 
         self.model_path = target_path
@@ -156,11 +159,29 @@ class DiseaseDetector:
 
     def _ensure_loaded(self) -> None:
         if self._model is None:
+            import gc
+            import torch
             from ultralytics import YOLO
+
+            # Enforce single-threaded CPU execution to minimize thread-pool memory
+            torch.set_num_threads(1)
+            if hasattr(torch, "set_num_interop_threads"):
+                try:
+                    torch.set_num_interop_threads(1)
+                except RuntimeError:
+                    pass
+
             print(f"[AgriSentry CV] Loading disease detector model on CPU from: {self.model_path}")
-            self._model = YOLO(str(self.model_path))
+            with torch.inference_mode():
+                self._model = YOLO(str(self.model_path))
+                if hasattr(self._model, "model") and self._model.model is not None:
+                    self._model.model.eval()
+                    for p in self._model.model.parameters():
+                        p.requires_grad = False
+
             self._class_names = self._model.names
             print(f"[AgriSentry CV] Model loaded successfully with {len(self._class_names)} classes.")
+            gc.collect()
 
     @property
     def model(self) -> Any:
@@ -288,16 +309,119 @@ class DiseaseDetector:
                 "message": f"Image dimensions too small ({img_width}x{img_height}).",
             }
 
-        # 2. Run YOLO inference on CPU strictly
+        # 2. Run YOLO inference on CPU strictly with single thread & inference_mode
         try:
-            results = self.model.predict(
-                source=pil_image,
-                imgsz=img_size,
-                conf=conf_threshold,
-                iou=iou_threshold,
-                device="cpu",
-                verbose=False,
+            import gc
+            import torch
+
+            torch.set_num_threads(1)
+            with torch.inference_mode():
+                results = self.model.predict(
+                    source=pil_image,
+                    imgsz=img_size,
+                    conf=conf_threshold,
+                    iou=iou_threshold,
+                    device="cpu",
+                    verbose=False,
+                )
+
+            inference_time_ms = round((time.time() - start_time) * 1000, 2)
+
+            # 3. Parse detections
+            detections: List[Dict[str, Any]] = []
+            if results and len(results) > 0 and results[0].boxes is not None:
+                boxes = results[0].boxes
+                cls_vals = boxes.cls.cpu().tolist() if boxes.cls is not None else []
+                conf_vals = boxes.conf.cpu().tolist() if boxes.conf is not None else []
+                xyxy_vals = boxes.xyxy.cpu().tolist() if boxes.xyxy is not None else []
+
+                for i in range(len(cls_vals)):
+                    cid = int(cls_vals[i])
+                    conf = round(float(conf_vals[i]), 4)
+                    raw_cname = self.class_names.get(cid, f"class_{cid}")
+                    c_crop, c_display = parse_crop_and_display_name(raw_cname)
+
+                    coords = xyxy_vals[i]
+                    bbox_dict = {
+                        "x1": round(float(coords[0]), 1),
+                        "y1": round(float(coords[1]), 1),
+                        "x2": round(float(coords[2]), 1),
+                        "y2": round(float(coords[3]), 1),
+                    }
+
+                    detections.append({
+                        "class_id": cid,
+                        "class_name": str(raw_cname),
+                        "display_name": str(c_display),
+                        "crop": str(c_crop),
+                        "confidence": conf,
+                        "bbox": bbox_dict,
+                    })
+
+            # Sort highest confidence first
+            detections.sort(key=lambda d: d["confidence"], reverse=True)
+
+            # 4. Determine final prediction and response status
+            if not detections:
+                return {
+                    "status": "no_detection",
+                    "model": MODEL_NAME,
+                    "model_version": MODEL_VERSION,
+                    "crop": "unknown",
+                    "disease": None,
+                    "disease_display_name": None,
+                    "confidence": 0.0,
+                    "severity": "unknown",
+                    "severity_details": {
+                        "level": "unknown",
+                        "affected_area_percent": 0.0,
+                        "method": "No disease bounding boxes met the confidence threshold",
+                    },
+                    "detections": [],
+                    "recommendation_context": {
+                        "crop": "unknown",
+                        "disease": None,
+                        "confidence": 0.0,
+                    },
+                    "inference_time_ms": inference_time_ms,
+                    "message": "No reliable disease detection found. Please upload a clearer leaf image.",
+                }
+
+            top_detection = detections[0]
+            primary_disease = top_detection["class_name"]
+            primary_confidence = top_detection["confidence"]
+            primary_crop = top_detection["crop"]
+            primary_display = top_detection["display_name"]
+            is_healthy = "healthy" in primary_disease.lower()
+
+            # Calculate severity
+            severity_level, severity_details = calculate_severity(
+                detections=detections,
+                image_width=img_width,
+                image_height=img_height,
+                is_healthy=is_healthy,
             )
+
+            return {
+                "status": "success",
+                "model": MODEL_NAME,
+                "model_version": MODEL_VERSION,
+                "crop": primary_crop,
+                "disease": primary_disease,
+                "disease_display_name": primary_display,
+                "confidence": primary_confidence,
+                "severity": severity_level,
+                "severity_details": severity_details,
+                "detections": detections,
+                "recommendation_context": {
+                    "crop": primary_crop,
+                    "disease": primary_disease,
+                    "confidence": primary_confidence,
+                },
+                "inference_time_ms": inference_time_ms,
+                "message": "Disease detected successfully." if not is_healthy else "Leaf detected healthy.",
+            }
+
         except Exception as exc:
             return {
                 "status": "error",
@@ -315,102 +439,9 @@ class DiseaseDetector:
                 "message": f"YOLO CPU inference failed: {str(exc)}",
             }
 
-        inference_time_ms = round((time.time() - start_time) * 1000, 2)
-
-        # 3. Parse detections
-        detections: List[Dict[str, Any]] = []
-        if results and len(results) > 0 and results[0].boxes is not None:
-            boxes = results[0].boxes
-            cls_vals = boxes.cls.cpu().tolist() if boxes.cls is not None else []
-            conf_vals = boxes.conf.cpu().tolist() if boxes.conf is not None else []
-            xyxy_vals = boxes.xyxy.cpu().tolist() if boxes.xyxy is not None else []
-
-            for i in range(len(cls_vals)):
-                cid = int(cls_vals[i])
-                conf = round(float(conf_vals[i]), 4)
-                raw_cname = self.class_names.get(cid, f"class_{cid}")
-                c_crop, c_display = parse_crop_and_display_name(raw_cname)
-
-                coords = xyxy_vals[i]
-                bbox_dict = {
-                    "x1": round(float(coords[0]), 1),
-                    "y1": round(float(coords[1]), 1),
-                    "x2": round(float(coords[2]), 1),
-                    "y2": round(float(coords[3]), 1),
-                }
-
-                detections.append({
-                    "class_id": cid,
-                    "class_name": str(raw_cname),
-                    "display_name": str(c_display),
-                    "crop": str(c_crop),
-                    "confidence": conf,
-                    "bbox": bbox_dict,
-                })
-
-        # Sort highest confidence first
-        detections.sort(key=lambda d: d["confidence"], reverse=True)
-
-        # 4. Determine final prediction and response status
-        if not detections:
-            return {
-                "status": "no_detection",
-                "model": MODEL_NAME,
-                "model_version": MODEL_VERSION,
-                "crop": "unknown",
-                "disease": None,
-                "disease_display_name": None,
-                "confidence": 0.0,
-                "severity": "unknown",
-                "severity_details": {
-                    "level": "unknown",
-                    "affected_area_percent": 0.0,
-                    "method": "No disease bounding boxes met the confidence threshold",
-                },
-                "detections": [],
-                "recommendation_context": {
-                    "crop": "unknown",
-                    "disease": None,
-                    "confidence": 0.0,
-                },
-                "inference_time_ms": inference_time_ms,
-                "message": "No reliable disease detection found. Please upload a clearer leaf image.",
-            }
-
-        top_detection = detections[0]
-        primary_disease = top_detection["class_name"]
-        primary_confidence = top_detection["confidence"]
-        primary_crop = top_detection["crop"]
-        primary_display = top_detection["display_name"]
-        is_healthy = "healthy" in primary_disease.lower()
-
-        # Calculate severity
-        severity_level, severity_details = calculate_severity(
-            detections=detections,
-            image_width=img_width,
-            image_height=img_height,
-            is_healthy=is_healthy,
-        )
-
-        return {
-            "status": "success",
-            "model": MODEL_NAME,
-            "model_version": MODEL_VERSION,
-            "crop": primary_crop,
-            "disease": primary_disease,
-            "disease_display_name": primary_display,
-            "confidence": primary_confidence,
-            "severity": severity_level,
-            "severity_details": severity_details,
-            "detections": detections,
-            "recommendation_context": {
-                "crop": primary_crop,
-                "disease": primary_disease,
-                "confidence": primary_confidence,
-            },
-            "inference_time_ms": inference_time_ms,
-            "message": "Disease detected successfully." if not is_healthy else "Leaf detected healthy.",
-        }
+        finally:
+            import gc
+            gc.collect()
 
 
 # Convenience factory functions for Member 2, Member 3 and Member 4

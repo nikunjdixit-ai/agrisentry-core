@@ -40,10 +40,24 @@ class AgroRAG:
     @property
     def embedding_model(self) -> Any:
         if self._embedding_model is None:
+            import gc
+            import torch
+
+            torch.set_num_threads(1)
+            if hasattr(torch, "set_num_interop_threads"):
+                try:
+                    torch.set_num_interop_threads(1)
+                except RuntimeError:
+                    pass
+
             from sentence_transformers import SentenceTransformer
             self._embedding_model = SentenceTransformer(
-                "all-MiniLM-L6-v2"
+                "all-MiniLM-L6-v2",
+                device="cpu",
             )
+            if hasattr(self._embedding_model, "eval"):
+                self._embedding_model.eval()
+            gc.collect()
         return self._embedding_model
 
     def _ensure_seeded(self) -> None:
@@ -310,7 +324,9 @@ class AgroRAG:
 
         try:
             self._ensure_seeded()
-            query_embedding = self.embedding_model.encode(semantic_query).tolist()
+            import torch
+            with torch.inference_mode():
+                query_embedding = self.embedding_model.encode(semantic_query).tolist()
 
             # ----------------------------------------------------
             # Tier 1: Exact Crop Match
@@ -448,6 +464,9 @@ class AgroRAG:
                     language=normalized_lang,
                 )
             ]
+        finally:
+            import gc
+            gc.collect()
 
     @staticmethod
     def _apply_localization(

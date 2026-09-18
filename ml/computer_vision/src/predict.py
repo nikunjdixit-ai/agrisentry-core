@@ -130,18 +130,29 @@ def predict_single_image(
         exist_ok=True,
     )
 
-    results = model.predict(
-        source=str(image_path),
-        imgsz=image_size,
-        conf=confidence,
-        iou=iou,
-        device=device,
-        save=True,
-        project=str(output_dir.parent),
-        name=output_dir.name,
-        exist_ok=True,
-        verbose=False,
-    )
+    import gc
+    import torch
+
+    torch.set_num_threads(1)
+    if hasattr(torch, "set_num_interop_threads"):
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            pass
+
+    with torch.inference_mode():
+        results = model.predict(
+            source=str(image_path),
+            imgsz=image_size,
+            conf=confidence,
+            iou=iou,
+            device=device,
+            save=True,
+            project=str(output_dir.parent),
+            name=output_dir.name,
+            exist_ok=True,
+            verbose=False,
+        )
 
     result = results[0]
     predictions = []
@@ -241,6 +252,8 @@ def predict_single_image(
     # --------------------------------------
     # Structured Prediction Response
     # --------------------------------------
+
+    gc.collect()
 
     return {
         "image": str(image_path),

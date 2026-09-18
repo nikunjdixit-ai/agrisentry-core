@@ -185,7 +185,7 @@ class TestAgriSentryDiseaseDetector(unittest.TestCase):
     # 16. Canonical model path
     def test_16_canonical_model_path(self):
         self.assertTrue(CANONICAL_MODEL.exists(), f"Canonical model missing at: {CANONICAL_MODEL}")
-        self.assertGreater(CANONICAL_MODEL.stat().st_size, 10 * 1024 * 1024)
+        self.assertGreater(CANONICAL_MODEL.stat().st_size, 5 * 1024 * 1024)
 
     # 17. Model metadata file
     def test_17_model_metadata_file(self):

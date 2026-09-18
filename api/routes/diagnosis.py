@@ -53,41 +53,9 @@ _model: Optional[Any] = None
 # ----------------------------------
 
 def get_model() -> Any:
-
-    global _model
-
-    if _model is not None:
-        return _model
-
-    model_path: Optional[Path] = None
-
-    for candidate in MODEL_CANDIDATES:
-
-        if candidate.exists():
-            model_path = candidate
-            break
-
-    if model_path is None:
-
-        searched_paths = "\n".join(
-            str(path)
-            for path in MODEL_CANDIDATES
-        )
-
-        raise FileNotFoundError(
-            "YOLO model file not found. "
-            f"Searched paths:\n{searched_paths}"
-        )
-
-    from ultralytics import YOLO
-
-    print(
-        f"Loading YOLO model from: {model_path}"
-    )
-
-    _model = YOLO(str(model_path))
-
-    return _model
+    """Return the shared singleton YOLO model via DiseaseDetector to prevent duplicate models in memory."""
+    from ml.computer_vision.src.disease_detector import get_disease_detector
+    return get_disease_detector().model
 
 
 # ----------------------------------
@@ -243,24 +211,24 @@ async def diagnose_crop(
     # ----------------------------------
 
     try:
-
         model_result = run_yolo_inference(
             pil_image
         )
-
     except FileNotFoundError as error:
-
         raise HTTPException(
             status_code=500,
             detail=str(error),
         ) from error
-
     except Exception as error:
-
         raise HTTPException(
             status_code=500,
             detail=f"YOLO inference failed: {error}",
         ) from error
+    finally:
+        import gc
+        del pil_image
+        del image_bytes
+        gc.collect()
 
     # ----------------------------------
     # Prepare Workflow State

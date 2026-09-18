@@ -57,7 +57,9 @@ desktop.ini
 *.safetensors
 
 # Computer Vision Model Artifacts
-ml/computer_vision/models/
+ml/computer_vision/models/*
+!ml/computer_vision/models/agrisentry_disease_model.pt
+!ml/computer_vision/models/model_metadata.json
 
 # ==============================
 # Datasets
