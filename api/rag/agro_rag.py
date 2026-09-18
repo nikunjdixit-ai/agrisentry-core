@@ -33,32 +33,22 @@ class AgroRAG:
     def collection(self) -> Any:
         if self._collection is None:
             self._collection = self.client.get_or_create_collection(
-                name="agri_documents"
+                name="agri_documents",
+                embedding_function=self.embedding_function,
             )
         return self._collection
 
     @property
-    def embedding_model(self) -> Any:
+    def embedding_function(self) -> Any:
         if self._embedding_model is None:
-            import gc
-            import torch
-
-            torch.set_num_threads(1)
-            if hasattr(torch, "set_num_interop_threads"):
-                try:
-                    torch.set_num_interop_threads(1)
-                except RuntimeError:
-                    pass
-
-            from sentence_transformers import SentenceTransformer
-            self._embedding_model = SentenceTransformer(
-                "all-MiniLM-L6-v2",
-                device="cpu",
-            )
-            if hasattr(self._embedding_model, "eval"):
-                self._embedding_model.eval()
-            gc.collect()
+            from chromadb.utils import embedding_functions
+            self._embedding_model = embedding_functions.DefaultEmbeddingFunction()
         return self._embedding_model
+
+    @property
+    def embedding_model(self) -> Any:
+        """Backwards compatibility alias for embedding function."""
+        return self.embedding_function
 
     def _ensure_seeded(self) -> None:
         if not self._seeded:
@@ -100,8 +90,6 @@ class AgroRAG:
             clean_meta = {k: ("" if v is None else v) for k, v in raw_meta.items()}
             metadatas.append(clean_meta)
 
-        embeddings = self.embedding_model.encode(documents).tolist()
-
         try:
             existing_info = self.collection.get()
             existing_ids = existing_info.get("ids", []) if existing_info else []
@@ -114,7 +102,6 @@ class AgroRAG:
         self.collection.upsert(
             ids=ids,
             documents=documents,
-            embeddings=embeddings,
             metadatas=metadatas,
         )
 
@@ -324,9 +311,6 @@ class AgroRAG:
 
         try:
             self._ensure_seeded()
-            import torch
-            with torch.inference_mode():
-                query_embedding = self.embedding_model.encode(semantic_query).tolist()
 
             # ----------------------------------------------------
             # Tier 1: Exact Crop Match
@@ -335,7 +319,7 @@ class AgroRAG:
 
             if crop and crop != "unknown":
                 results = self.collection.query(
-                    query_embeddings=[query_embedding],
+                    query_texts=[semantic_query],
                     n_results=10,
                     where={"crop_type": crop},
                     include=["documents", "metadatas", "distances"],
@@ -391,7 +375,7 @@ class AgroRAG:
             # Tier 2: General Disease-Level Recommendation
             # ----------------------------------------------------
             tier2_results = self.collection.query(
-                query_embeddings=[query_embedding],
+                query_texts=[semantic_query],
                 n_results=5,
                 where={"crop_type": "general"},
                 include=["documents", "metadatas", "distances"],

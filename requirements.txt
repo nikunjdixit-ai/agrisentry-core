@@ -3,18 +3,16 @@
 # ==============================
 
 # Computer Vision & Deep Learning
+--extra-index-url https://download.pytorch.org/whl/cpu
 ultralytics
 opencv-python-headless
 pillow
 torch
 torchvision
 
-# Machine Learning & Scientific Computing
-scikit-learn
-xgboost
+# Machine Learning & Data Processing
 numpy
 pandas
-scipy
 
 # API & ASGI Model Serving
 fastapi
@@ -23,7 +21,6 @@ pydantic
 python-multipart>=0.0.9
 
 # Multi-Agent Workflow & RAG Vector Search
-sentence-transformers
 chromadb
 langgraph
 langchain-core

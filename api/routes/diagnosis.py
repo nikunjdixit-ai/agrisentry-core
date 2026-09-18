@@ -144,15 +144,14 @@ def estimate_severity(
 # ----------------------------------
 
 def run_yolo_inference(
-    image: Image.Image,
+    image_input: Any,
 ) -> Dict[str, Any]:
     """
-    Run plant disease inference using the canonical DiseaseDetector on CPU.
+    Run plant disease inference using process-isolated DiseaseDetector on CPU.
+    When inference finishes, the OS kernel immediately reclaims all model memory.
     """
-    from ml.computer_vision.src.disease_detector import get_disease_detector
-
-    detector = get_disease_detector()
-    return detector.detect(image)
+    from ml.computer_vision.src.disease_detector import predict_disease_isolated
+    return predict_disease_isolated(image_input)
 
 
 # ----------------------------------
@@ -192,10 +191,6 @@ async def diagnose_crop(
                 detail="Uploaded image is empty.",
             )
 
-        pil_image = Image.open(
-            BytesIO(image_bytes)
-        ).convert("RGB")
-
     except HTTPException:
         raise
 
@@ -212,7 +207,7 @@ async def diagnose_crop(
 
     try:
         model_result = run_yolo_inference(
-            pil_image
+            image_bytes
         )
     except FileNotFoundError as error:
         raise HTTPException(
@@ -226,7 +221,6 @@ async def diagnose_crop(
         ) from error
     finally:
         import gc
-        del pil_image
         del image_bytes
         gc.collect()
 

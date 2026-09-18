@@ -461,3 +461,86 @@ def predict_disease(
     """
     detector = get_disease_detector(model_path=model_path)
     return detector.detect(image_input=image_input, conf_threshold=conf_threshold)
+
+
+def _isolated_worker_detect(
+    image_bytes: bytes,
+    conf_threshold: float,
+    model_path_str: Optional[str],
+) -> Dict[str, Any]:
+    """
+    Top-level worker function executed inside an isolated sub-process.
+    When this function finishes and the sub-process terminates, the OS
+    immediately frees all PyTorch C++ memory back to the system kernel.
+    """
+    import gc
+    import torch
+
+    torch.set_num_threads(1)
+    if hasattr(torch, "set_num_interop_threads"):
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            pass
+
+    detector = DiseaseDetector(model_path=model_path_str)
+    result = detector.detect(image_input=image_bytes, conf_threshold=conf_threshold)
+    del detector
+    gc.collect()
+    return result
+
+
+def predict_disease_isolated(
+    image_input: Any,
+    conf_threshold: float = DEFAULT_CONF_THRESHOLD,
+    model_path: Optional[Union[str, Path]] = None,
+) -> Dict[str, Any]:
+    """
+    Run YOLO disease prediction in an isolated child process.
+    The child process executes inference and exits, ensuring 100% of the ~400MB
+    PyTorch memory allocation is reclaimed by the operating system.
+    Falls back gracefully to in-process detection if multiprocessing is restricted.
+    """
+    # 1. Convert various input types to bytes for clean process serialization
+    raw_bytes: Optional[bytes] = None
+
+    if isinstance(image_input, bytes):
+        raw_bytes = image_input
+    elif isinstance(image_input, (str, Path)):
+        p = Path(image_input)
+        if p.exists():
+            raw_bytes = p.read_bytes()
+    elif isinstance(image_input, Image.Image):
+        buf = io.BytesIO()
+        image_input.save(buf, format="JPEG")
+        raw_bytes = buf.getvalue()
+    elif hasattr(image_input, "read"):
+        raw_bytes = image_input.read()
+        if hasattr(image_input, "seek"):
+            image_input.seek(0)
+
+    if not raw_bytes:
+        # Fallback to direct detection for error message consistency
+        return predict_disease(image_input=image_input, conf_threshold=conf_threshold, model_path=model_path)
+
+    model_path_str = str(model_path) if model_path else None
+
+    # 2. Run inside a short-lived ProcessPoolExecutor
+    try:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                _isolated_worker_detect,
+                raw_bytes,
+                conf_threshold,
+                model_path_str,
+            )
+            return future.result(timeout=45)
+    except Exception as exc:
+        print(f"[AgriSentry CV] Process isolation notice ({exc}); using in-process fallback.")
+        return predict_disease(
+            image_input=raw_bytes,
+            conf_threshold=conf_threshold,
+            model_path=model_path,
+        )
+
