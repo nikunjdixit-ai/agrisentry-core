@@ -167,8 +167,9 @@ voice_outputs/
 # ==============================
 node_modules/
 frontend/node_modules/
-dist/
-frontend/dist/
+# dist/ (allow frontend/dist for FastAPI dashboard hosting)
+!frontend/dist/
+!frontend/dist/**
 *.tsbuildinfo
 frontend/*.tsbuildinfo
 frontend/vite.config.js

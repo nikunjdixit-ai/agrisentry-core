@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -40,12 +41,17 @@ app.include_router(diagnosis_router)
 
 
 # ----------------------------------
-# Static Files (Voice Outputs)
+# Static Files (Voice Outputs & Frontend Assets)
 # ----------------------------------
 
 voice_dir = Path(VOICE_OUTPUT_DIRECTORY)
 voice_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/voice_outputs", StaticFiles(directory=str(voice_dir)), name="voice_outputs")
+
+frontend_dist_dir = PROJECT_ROOT / "frontend" / "dist"
+frontend_assets_dir = frontend_dist_dir / "assets"
+if frontend_assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(frontend_assets_dir)), name="assets")
 
 
 # ----------------------------------
@@ -92,11 +98,22 @@ class DiagnoseRequest(BaseModel):
 
 
 # ----------------------------------
-# Root Endpoint
+# Root Endpoint (Serves UI Dashboard)
 # ----------------------------------
 
 @app.get("/", tags=["System"])
-def root() -> dict[str, str]:
+def root() -> Any:
+    index_file = frontend_dist_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return {
+        "message": "Welcome to AgriSentry Core API",
+        "docs": "/docs",
+    }
+
+
+@app.get("/api", tags=["System"])
+def api_info() -> dict[str, str]:
     return {
         "message": "Welcome to AgriSentry Core API",
         "docs": "/docs",

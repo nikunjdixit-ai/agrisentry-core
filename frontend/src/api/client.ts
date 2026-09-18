@@ -6,7 +6,7 @@ import { DiagnosisApiResponse, DiagnosisParams } from "./types";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "http://localhost:8000";
+  (typeof window !== "undefined" && window.location.origin ? window.location.origin : "http://localhost:8000");
 
 /**
  * Submits an uploaded crop leaf image along with optional crop, region, and query
